@@ -34,12 +34,13 @@ fn render_blocks(blocks : Array[Block], sb : StringBuilder) -> Unit {
     let block = blocks[i]
     match block {
       Heading(level, inlines) => {
+        let tag = level.to_string()
         sb.write_string("<h")
-        sb.write_string(level.to_string())
+        sb.write_string(tag)
         sb.write_string(">")
         render_inlines(inlines, sb)
         sb.write_string("</h")
-        sb.write_string(level.to_string())
+        sb.write_string(tag)
         sb.write_string(">\n")
       }
       Paragraph(inlines) => {
