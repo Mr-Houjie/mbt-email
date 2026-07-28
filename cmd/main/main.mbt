@@ -1,27 +1,29 @@
 /// mbt-markdown - Full feature demonstration.
 fn main {
-  let input = "# Hello, mbt-markdown!\n\n" +
-    "This is a **Markdown** parser written in **MoonBit**.\n\n" +
-    "## Features\n\n" +
-    "- **Headings** (*h1* to *h6*)\n" +
-    "- *Emphasis* and **strong** text\n" +
-    "- `Inline code`\n" +
-    "- [Links](https://moonbitlang.com)\n" +
-    "- Code blocks\n\n" +
-    "### Inline Formatting\n\n" +
-    "Here is **bold**, *italic*, and `code`.\n\n" +
-    "### Code Example\n\n" +
-    "```rust\n" +
-    "fn hello() {\n" +
-    "    println!(\"Hello, world!\");\n" +
-    "}\n" +
-    "```\n\n" +
-    "### Blockquote\n\n" +
-    "> This is a blockquote.\n" +
-    "> It spans multiple lines.\n\n" +
-    "### Thematic Break\n\n" +
-    "---\n\n" +
-    "Created with ❤️\n"
+  let sb = StringBuilder::new()
+  sb.write_string("# Hello, mbt-markdown!\n\n")
+  sb.write_string("This is a **Markdown** parser written in **MoonBit**.\n\n")
+  sb.write_string("## Features\n\n")
+  sb.write_string("- **Headings** (*h1* to *h6*)\n")
+  sb.write_string("- *Emphasis* and **strong** text\n")
+  sb.write_string("- `Inline code`\n")
+  sb.write_string("- [Links](https://moonbitlang.com)\n")
+  sb.write_string("- Code blocks\n\n")
+  sb.write_string("### Inline Formatting\n\n")
+  sb.write_string("Here is **bold**, *italic*, and `code`.\n\n")
+  sb.write_string("### Code Example\n\n")
+  sb.write_string("```rust\n")
+  sb.write_string("fn hello() {\n")
+  sb.write_string("    println!(\"Hello, world!\");\n")
+  sb.write_string("}\n")
+  sb.write_string("```\n\n")
+  sb.write_string("### Blockquote\n\n")
+  sb.write_string("> This is a blockquote.\n")
+  sb.write_string("> It spans multiple lines.\n\n")
+  sb.write_string("### Thematic Break\n\n")
+  sb.write_string("---\n\n")
+  sb.write_string("Created with ❤️\n")
+  let input = sb.to_string()
   let html = @lib.md_to_html(input)
   println(html)
 }
