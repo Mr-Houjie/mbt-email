@@ -3,17 +3,31 @@ fn escape_html(s : String) -> String {
   let sb = StringBuilder::new()
   let len = s.length()
   let mut i = 0
+  let mut start = 0
   while i < len {
     let c = s[i]
-    match c {
-      '&' => sb.write_string("&amp;")
-      '<' => sb.write_string("&lt;")
-      '>' => sb.write_string("&gt;")
-      '"' => sb.write_string("&quot;")
-      '\'' => sb.write_string("&#39;")
-      _ => sb.write_string(String::make(1, s.unsafe_char_at(i)))
+    let needs_escape = match c {
+      '&' | '<' | '>' | '"' | '\'' => true
+      _ => false
+    }
+    if needs_escape {
+      if start < i {
+        sb.write_string(s.substring(start=start, end=i))
+      }
+      match c {
+        '&' => sb.write_string("&amp;")
+        '<' => sb.write_string("&lt;")
+        '>' => sb.write_string("&gt;")
+        '"' => sb.write_string("&quot;")
+        '\'' => sb.write_string("&#39;")
+        _ => ()
+      }
+      start = i + 1
     }
     i = i + 1
+  }
+  if start < len {
+    sb.write_string(s.substring(start=start, end=len))
   }
   sb.to_string()
 }
