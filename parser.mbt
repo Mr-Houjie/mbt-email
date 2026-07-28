@@ -1,16 +1,13 @@
-///|
 /// Block-level Markdown parser.
 struct LineIter {
   lines : Array[String]
   pos : Int
 }
 
-///|
 fn LineIter::new(s : String) -> LineIter {
   { lines: split_lines(s), pos: 0 }
 }
 
-///|
 fn peek_line(iter : LineIter) -> String? {
   if iter.pos < iter.lines.length() {
     Some(iter.lines[iter.pos])
@@ -19,12 +16,10 @@ fn peek_line(iter : LineIter) -> String? {
   }
 }
 
-///|
 fn advance_line(iter : LineIter) -> LineIter {
   { lines: iter.lines, pos: iter.pos + 1 }
 }
 
-///|
 fn split_lines(s : String) -> Array[String] {
   let result : Array[String] = []
   let mut i = 0
@@ -45,7 +40,6 @@ fn split_lines(s : String) -> Array[String] {
   result
 }
 
-///|
 /// Parse a full Markdown document string into an AST
 pub fn parse_document(input : String) -> Document {
   let iter = LineIter::new(input)
@@ -53,7 +47,6 @@ pub fn parse_document(input : String) -> Document {
   { blocks, }
 }
 
-///|
 fn parse_blocks(iter : LineIter) -> Array[Block] {
   let blocks : Array[Block] = []
   let mut cur = iter
@@ -150,7 +143,6 @@ fn parse_blocks(iter : LineIter) -> Array[Block] {
   blocks
 }
 
-///|
 fn is_thematic_break(line : String) -> Bool {
   let len = line.length()
   if len < 3 {
@@ -177,7 +169,6 @@ fn is_thematic_break(line : String) -> Bool {
   count >= 3
 }
 
-///|
 fn heading_match(line : String) -> Int {
   let len = line.length()
   let mut i = 0
@@ -192,7 +183,6 @@ fn heading_match(line : String) -> Int {
   0
 }
 
-///|
 fn fence_code_match(line : String) -> (Char, Int, String)? {
   let trimmed = trim_left(line)
   let len = trimmed.length()
@@ -221,7 +211,6 @@ fn fence_code_match(line : String) -> (Char, Int, String)? {
   Some((first_char, count, lang))
 }
 
-///|
 fn parse_fenced_code(
   iter : LineIter,
   fence_char : Char,
@@ -264,7 +253,6 @@ fn parse_fenced_code(
   (code_lines.join("\n"), cur)
 }
 
-///|
 fn parse_blockquote(iter : LineIter) -> (Array[Block], LineIter) {
   let quote_lines : Array[String] = []
   let mut cur = iter
@@ -295,14 +283,12 @@ fn parse_blockquote(iter : LineIter) -> (Array[Block], LineIter) {
   (parse_blocks(LineIter::new(joined)), cur)
 }
 
-///|
 struct ListMatch {
   mode : ListMode
   content : String
   indent : Int
 }
 
-///|
 fn list_item_match(line : String) -> ListMatch? {
   let trimmed = line.trim().to_string()
   let len = trimmed.length()
@@ -360,7 +346,6 @@ fn list_item_match(line : String) -> ListMatch? {
   None
 }
 
-///|
 fn parse_list(
   iter : LineIter,
   first_match : ListMatch,
@@ -410,7 +395,6 @@ fn parse_list(
   (mode, items, cur)
 }
 
-///|
 fn collect_list_item_lines(
   iter : LineIter,
   indent : Int,
@@ -444,14 +428,12 @@ fn collect_list_item_lines(
   (lines, cur)
 }
 
-///|
 fn parse_list_item_lines(lines : Array[String]) -> ListItem {
   let joined = lines.join("\n")
   let blocks = parse_blocks(LineIter::new(joined))
   { blocks, checked: None }
 }
 
-///|
 fn parse_paragraph(iter : LineIter) -> (Array[Block], LineIter) {
   let para_lines : Array[String] = []
   let mut cur = iter
@@ -487,7 +469,6 @@ fn parse_paragraph(iter : LineIter) -> (Array[Block], LineIter) {
   ([Paragraph(inlines)], cur)
 }
 
-///|
 fn trim_left(s : String) -> String {
   let mut i = 0
   let len = s.length()

@@ -1,8 +1,6 @@
-///|
 /// AST node types for Markdown documents.
 /// Represents the structural elements of a Markdown document.
 
-///|
 /// Inline-level elements (content inside paragraphs, headings, etc.)
 pub enum Inline {
   /// Plain text content
@@ -23,7 +21,6 @@ pub enum Inline {
   Image(String, String, String?)
 }
 
-///|
 /// Block-level elements (top-level structure of a Markdown document)
 pub enum Block {
   /// ATX heading: # to ######
@@ -42,21 +39,18 @@ pub enum Block {
   RawHtmlBlock(String)
 }
 
-///|
 /// Mode of a list: bullet or ordered
 pub enum ListMode {
   Bullet(String)
   Ordered(Int)
 }
 
-///|
 /// A single list item
 pub struct ListItem {
   blocks : Array[Block]
   checked : Bool?
 }
 
-///|
 /// A complete Markdown document
 pub struct Document {
   blocks : Array[Block]

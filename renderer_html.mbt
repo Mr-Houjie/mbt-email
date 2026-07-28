@@ -1,4 +1,3 @@
-///|
 /// HTML renderer: converts the Markdown AST to HTML.
 fn escape_html(s : String) -> String {
   let sb = StringBuilder::new()
@@ -19,7 +18,6 @@ fn escape_html(s : String) -> String {
   sb.to_string()
 }
 
-///|
 /// Render a complete Document to HTML
 pub fn render_html(doc : Document) -> String {
   let sb = StringBuilder::new()
@@ -27,7 +25,6 @@ pub fn render_html(doc : Document) -> String {
   sb.to_string()
 }
 
-///|
 fn render_blocks(blocks : Array[Block], sb : StringBuilder) -> Unit {
   let mut i = 0
   while i < blocks.length() {
@@ -93,7 +90,6 @@ fn render_blocks(blocks : Array[Block], sb : StringBuilder) -> Unit {
   }
 }
 
-///|
 fn render_list_items(items : Array[ListItem], sb : StringBuilder) -> Unit {
   let mut i = 0
   while i < items.length() {
@@ -105,7 +101,6 @@ fn render_list_items(items : Array[ListItem], sb : StringBuilder) -> Unit {
   }
 }
 
-///|
 fn render_inlines(inlines : Array[Inline], sb : StringBuilder) -> Unit {
   let mut i = 0
   while i < inlines.length() {

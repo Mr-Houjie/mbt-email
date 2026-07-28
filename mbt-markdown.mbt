@@ -1,4 +1,3 @@
-///|
 /// mbt-markdown: A Markdown parser and HTML renderer for MoonBit.
 ///
 /// This package provides a complete Markdown-to-HTML pipeline:
@@ -18,13 +17,11 @@
 ///   - Thematic breaks (---, ***, ___)
 ///   - HTML escaping
 
-///|
 /// Parse a Markdown string into its AST representation.
 pub fn parse(input : String) -> Document {
   parse_document(input)
 }
 
-///|
 /// Parse a Markdown string and render it to HTML in one step.
 ///
 /// Example:

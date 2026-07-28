@@ -1,4 +1,3 @@
-///|
 /// Inline lexer/parser: breaks a string into Inline AST nodes.
 struct InlineCtx {
   s : String
@@ -6,34 +5,28 @@ struct InlineCtx {
   len : Int
 }
 
-///|
 fn InlineCtx::new(s : String) -> InlineCtx {
   { s, pos: 0, len: s.length() }
 }
 
-///|
 fn peek(ctx : InlineCtx) -> Char? {
   ctx.s.get_char(ctx.pos)
 }
 
-///|
 fn advance(ctx : InlineCtx) -> InlineCtx {
   { s: ctx.s, pos: ctx.pos + 1, len: ctx.len }
 }
 
-///|
 fn peek_next(ctx : InlineCtx) -> Char? {
   ctx.s.get_char(ctx.pos + 1)
 }
 
-///|
 /// Parse inline content from a string
 pub fn parse_inlines(s : String) -> Array[Inline] {
   let ctx = InlineCtx::new(s)
   parse_inlines_until(ctx, None).0
 }
 
-///|
 fn parse_inlines_until(
   ctx : InlineCtx,
   until_delim : Char?,
@@ -124,7 +117,6 @@ fn parse_inlines_until(
   (nodes, cur)
 }
 
-///|
 fn parse_code_span(ctx : InlineCtx) -> (String, InlineCtx) {
   let mut backtick_count = 0
   let mut cur = ctx
@@ -168,7 +160,6 @@ fn parse_code_span(ctx : InlineCtx) -> (String, InlineCtx) {
   (code, cur)
 }
 
-///|
 fn parse_emphasis(ctx : InlineCtx) -> (Inline, InlineCtx) {
   let ch = peek(ctx)
   if ch.is_none() {
@@ -206,7 +197,6 @@ fn parse_emphasis(ctx : InlineCtx) -> (Inline, InlineCtx) {
   }
 }
 
-///|
 fn parse_link(ctx : InlineCtx) -> (Inline, InlineCtx) {
   let mut cur = advance(ctx)
   let (text, after_text) = parse_inlines_until(cur, Some(']'))
@@ -274,7 +264,6 @@ fn parse_link(ctx : InlineCtx) -> (Inline, InlineCtx) {
   }
 }
 
-///|
 fn parse_image(ctx : InlineCtx) -> (Inline, InlineCtx) {
   let mut cur = advance(advance(ctx))
   let (alt_text, after_alt) = parse_inlines_until(cur, Some(']'))
@@ -341,7 +330,6 @@ fn parse_image(ctx : InlineCtx) -> (Inline, InlineCtx) {
   }
 }
 
-///|
 fn inlines_to_raw_text(inlines : Array[Inline]) -> String {
   let sb = StringBuilder::new()
   let mut i = 0

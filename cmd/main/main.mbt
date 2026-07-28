@@ -1,4 +1,3 @@
-///|
 /// mbt-markdown - Full feature demonstration.
 fn main {
   let input = "# Hello, mbt-markdown!\n\n" +
