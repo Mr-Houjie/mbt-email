@@ -2,11 +2,10 @@
 struct InlineCtx {
   s : String
   pos : Int
-  len : Int
 }
 
 fn InlineCtx::new(s : String) -> InlineCtx {
-  { s, pos: 0, len: s.length() }
+  { s, pos: 0 }
 }
 
 fn peek(ctx : InlineCtx) -> Char? {
@@ -14,7 +13,7 @@ fn peek(ctx : InlineCtx) -> Char? {
 }
 
 fn advance(ctx : InlineCtx) -> InlineCtx {
-  { s: ctx.s, pos: ctx.pos + 1, len: ctx.len }
+  { s: ctx.s, pos: ctx.pos + 1 }
 }
 
 fn peek_next(ctx : InlineCtx) -> Char? {
