@@ -102,3 +102,9 @@ test "hard_break" {
   let html = @houjie/mbt-markdown.md_to_html("line 1  \nline 2\n")
   assert_eq(html, "<p>line 1<br />\nline 2</p>\n")
 }
+
+///| Plain text extraction
+test "md_to_text" {
+  let text = @houjie/mbt-markdown.md_to_text("# Hello\n\n**bold** text\n")
+  assert_eq(text, "Hello\n\nbold text\n\n")
+}
