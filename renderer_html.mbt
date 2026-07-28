@@ -72,8 +72,14 @@ fn render_blocks(blocks : Array[Block], sb : StringBuilder) -> Unit {
             render_list_items(items, sb)
             sb.write_string("</ul>\n")
           }
-          Ordered(_) => {
-            sb.write_string("<ol>\n")
+          Ordered(start) => {
+            sb.write_string("<ol")
+            if start != 1 {
+              sb.write_string(" start=\"")
+              sb.write_string(start.to_string())
+              sb.write_string("\"")
+            }
+            sb.write_string(">\n")
             render_list_items(items, sb)
             sb.write_string("</ol>\n")
           }
