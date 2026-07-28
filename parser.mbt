@@ -131,12 +131,8 @@ fn parse_blocks(iter : LineIter) -> Array[Block] {
     }
 
     // Default: paragraph
-    let (para_blocks, after_para) = parse_paragraph(cur)
-    let mut pi = 0
-    while pi < para_blocks.length() {
-      blocks.push(para_blocks[pi])
-      pi = pi + 1
-    }
+    let (para_block, after_para) = parse_paragraph(cur)
+    blocks.push(para_block)
     cur = after_para
   }
 
@@ -427,7 +423,7 @@ fn parse_list_item_lines(lines : Array[String]) -> ListItem {
   { blocks, checked: None }
 }
 
-fn parse_paragraph(iter : LineIter) -> (Array[Block], LineIter) {
+fn parse_paragraph(iter : LineIter) -> (Block, LineIter) {
   let para_lines : Array[String] = []
   let mut cur = iter
 
@@ -459,7 +455,7 @@ fn parse_paragraph(iter : LineIter) -> (Array[Block], LineIter) {
 
   let text = para_lines.join("\n")
   let inlines = parse_inlines(text)
-  ([Paragraph(inlines)], cur)
+  (Paragraph(inlines), cur)
 }
 
 fn trim_left(s : String) -> String {
