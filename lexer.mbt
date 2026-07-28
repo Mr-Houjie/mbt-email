@@ -229,12 +229,19 @@ fn parse_link(ctx : InlineCtx) -> (Inline, InlineCtx) {
   let (text, after_text) = parse_inlines_until(cur, Some(']'))
 
   if peek(after_text).is_none() || peek(after_text).unwrap() != ']' {
-    return (Text("[" + inlines_to_raw_text(text)), after_text)
+    let fb = StringBuilder::new()
+    fb.write_string("[")
+    fb.write_string(inlines_to_raw_text(text))
+    return (Text(fb.to_string()), after_text)
   }
   cur = advance(after_text)
 
   if peek(cur).is_none() || peek(cur).unwrap() != '(' {
-    return (Text("[" + inlines_to_raw_text(text) + "]"), cur)
+    let fb = StringBuilder::new()
+    fb.write_string("[")
+    fb.write_string(inlines_to_raw_text(text))
+    fb.write_string("]")
+    return (Text(fb.to_string()), cur)
   }
   cur = advance(cur)
 
@@ -291,7 +298,12 @@ fn parse_link(ctx : InlineCtx) -> (Inline, InlineCtx) {
   if peek(cur).is_some() && peek(cur).unwrap() == ')' {
     (Link(text, url_b.to_string(), None), advance(cur))
   } else {
-    (Text("[" + inlines_to_raw_text(text) + "](" + url_b.to_string()), cur)
+    let fb = StringBuilder::new()
+    fb.write_string("[")
+    fb.write_string(inlines_to_raw_text(text))
+    fb.write_string("](")
+    fb.write_string(url_b.to_string())
+    (Text(fb.to_string()), cur)
   }
 }
 
@@ -300,12 +312,19 @@ fn parse_image(ctx : InlineCtx) -> (Inline, InlineCtx) {
   let (alt_text, after_alt) = parse_inlines_until(cur, Some(']'))
 
   if peek(after_alt).is_none() || peek(after_alt).unwrap() != ']' {
-    return (Text("![" + inlines_to_raw_text(alt_text)), after_alt)
+    let fb = StringBuilder::new()
+    fb.write_string("![")
+    fb.write_string(inlines_to_raw_text(alt_text))
+    return (Text(fb.to_string()), after_alt)
   }
   cur = advance(after_alt)
 
   if peek(cur).is_none() || peek(cur).unwrap() != '(' {
-    return (Text("![" + inlines_to_raw_text(alt_text) + "]"), cur)
+    let fb = StringBuilder::new()
+    fb.write_string("![")
+    fb.write_string(inlines_to_raw_text(alt_text))
+    fb.write_string("]")
+    return (Text(fb.to_string()), cur)
   }
   cur = advance(cur)
 
@@ -361,7 +380,12 @@ fn parse_image(ctx : InlineCtx) -> (Inline, InlineCtx) {
   if peek(cur).is_some() && peek(cur).unwrap() == ')' {
     (Image(inlines_to_raw_text(alt_text), url_b.to_string(), None), advance(cur))
   } else {
-    (Text("![" + inlines_to_raw_text(alt_text) + "](" + url_b.to_string()), cur)
+    let fb = StringBuilder::new()
+    fb.write_string("![")
+    fb.write_string(inlines_to_raw_text(alt_text))
+    fb.write_string("](")
+    fb.write_string(url_b.to_string())
+    (Text(fb.to_string()), cur)
   }
 }
 
