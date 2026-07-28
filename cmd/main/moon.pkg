@@ -1,0 +1,7 @@
+import {
+  "houjie/mbt-markdown" @lib,
+}
+
+options(
+  "is-main": true,
+)
