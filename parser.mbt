@@ -286,7 +286,6 @@ fn parse_blockquote(iter : LineIter) -> (Array[Block], LineIter) {
 struct ListMatch {
   mode : ListMode
   content : String
-  indent : Int
 }
 
 fn list_item_match(line : String) -> ListMatch? {
@@ -300,7 +299,6 @@ fn list_item_match(line : String) -> ListMatch? {
       return Some({
         mode: Bullet(String::make(1, c)),
         content: trimmed.substring(start=2, end=len),
-        indent: line.length() - trimmed.length() + 2,
       })
     }
   }
@@ -338,7 +336,6 @@ fn list_item_match(line : String) -> ListMatch? {
       return Some({
         mode: Ordered(num),
         content,
-        indent: line.length() - trimmed.length() + content_start,
       })
     }
   }
@@ -357,7 +354,6 @@ fn parse_list(
   // Process first item
   let (first_item_lines, after_first) = collect_list_item_lines(
     advance_line(cur),
-    first_match.indent,
     first_match.content,
   )
   items.push(parse_list_item_lines(first_item_lines))
@@ -382,7 +378,6 @@ fn parse_list(
       }
       let (item_lines, after_item) = collect_list_item_lines(
         advance_line(cur),
-        m.indent,
         m.content,
       )
       items.push(parse_list_item_lines(item_lines))
@@ -397,7 +392,6 @@ fn parse_list(
 
 fn collect_list_item_lines(
   iter : LineIter,
-  indent : Int,
   first_content : String,
 ) -> (Array[String], LineIter) {
   let lines : Array[String] = [first_content]
