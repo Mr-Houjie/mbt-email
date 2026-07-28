@@ -81,7 +81,34 @@ fn parse_inlines_until(
         cur = new_ctx
       }
       '\n' => {
-        nodes.push(SoftBreak)
+        let is_hard = if nodes.length() > 0 {
+          match nodes[nodes.length() - 1] {
+            Text(s) => {
+              let slen = s.length()
+              slen >= 2 && s[slen - 1] == ' ' && s[slen - 2] == ' '
+            }
+            _ => false
+          }
+        } else {
+          false
+        }
+        if is_hard {
+          match nodes[nodes.length() - 1] {
+            Text(s) => {
+              let mut end = s.length()
+              while end > 0 && s[end - 1] == ' ' {
+                end = end - 1
+              }
+              nodes[nodes.length() - 1] = Text(
+                s.substring(start=0, end=end),
+              )
+            }
+            _ => ()
+          }
+          nodes.push(HardBreak)
+        } else {
+          nodes.push(SoftBreak)
+        }
         cur = advance(cur)
       }
       _ => {

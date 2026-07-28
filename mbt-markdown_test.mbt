@@ -96,3 +96,9 @@ test "heading_h3" {
   let html = @houjie/mbt-markdown.md_to_html("### H3\n")
   assert_eq(html, "<h3>H3</h3>\n")
 }
+
+///| Hard line break (two trailing spaces)
+test "hard_break" {
+  let html = @houjie/mbt-markdown.md_to_html("line 1  \nline 2\n")
+  assert_eq(html, "<p>line 1<br />\nline 2</p>\n")
+}
