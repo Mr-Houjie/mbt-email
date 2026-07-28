@@ -184,18 +184,17 @@ fn heading_match(line : String) -> Int {
 }
 
 fn fence_code_match(line : String) -> (Char, Int, String)? {
-  let trimmed = trim_left(line)
-  let len = trimmed.length()
+  let len = line.length()
   if len < 3 {
     return None
   }
-  let first_char = trimmed.unsafe_char_at(0)
+  let first_char = line.unsafe_char_at(0)
   if first_char != '`' && first_char != '~' {
     return None
   }
 
   let mut count = 1
-  while count < len && trimmed.unsafe_char_at(count) == first_char {
+  while count < len && line.unsafe_char_at(count) == first_char {
     count = count + 1
   }
 
@@ -204,7 +203,7 @@ fn fence_code_match(line : String) -> (Char, Int, String)? {
   }
 
   let lang = if count < len {
-    trimmed.substring(start=count, end=len).trim().to_string()
+    line.substring(start=count, end=len).trim().to_string()
   } else {
     ""
   }

@@ -155,7 +155,7 @@ fn parse_code_span(ctx : InlineCtx) -> (String, InlineCtx) {
     cur = advance(cur)
   }
 
-  let mut code = ""
+  let sb = StringBuilder::new()
   while true {
     let ch = peek(cur)
     if ch.is_none() {
@@ -176,15 +176,15 @@ fn parse_code_span(ctx : InlineCtx) -> (String, InlineCtx) {
         cur = tmp
         break
       } else {
-        code = code + "`"
+        sb.write_string("`")
         cur = advance(cur)
       }
     } else {
-      code = code + String::make(1, ch.unwrap())
+      sb.write_string(String::make(1, ch.unwrap()))
       cur = advance(cur)
     }
   }
-  (code, cur)
+  (sb.to_string(), cur)
 }
 
 fn parse_emphasis(ctx : InlineCtx) -> (Inline, InlineCtx) {
@@ -215,12 +215,13 @@ fn parse_emphasis(ctx : InlineCtx) -> (Inline, InlineCtx) {
       (Emphasis(content), after)
     }
   } else {
-    let prefix = if strong {
-      String::make(1, delim) + String::make(1, delim)
-    } else {
-      String::make(1, delim)
+    let sb = StringBuilder::new()
+    sb.write_string(String::make(1, delim))
+    if strong {
+      sb.write_string(String::make(1, delim))
     }
-    (Text(prefix + inlines_to_raw_text(content)), remaining)
+    sb.write_string(inlines_to_raw_text(content))
+    (Text(sb.to_string()), remaining)
   }
 }
 
@@ -238,7 +239,7 @@ fn parse_link(ctx : InlineCtx) -> (Inline, InlineCtx) {
   }
   cur = advance(cur)
 
-  let mut url = ""
+  let url_b = StringBuilder::new()
   while true {
     if peek(cur).is_none() || peek(cur).unwrap() == ')' {
       break
@@ -253,7 +254,7 @@ fn parse_link(ctx : InlineCtx) -> (Inline, InlineCtx) {
         ) {
         let title_char = peek(after_space).unwrap()
         let mut title_cur = advance(after_space)
-        let mut title = ""
+        let title_b = StringBuilder::new()
         while true {
           if peek(title_cur).is_none() {
             break
@@ -261,33 +262,37 @@ fn parse_link(ctx : InlineCtx) -> (Inline, InlineCtx) {
           if peek(title_cur).unwrap() == title_char {
             title_cur = advance(title_cur)
             if peek(title_cur).is_some() && peek(title_cur).unwrap() == ')' {
+              let title = title_b.to_string()
               let title_opt = if title.length() > 0 {
                 Some(title)
               } else {
                 None
               }
+              let url = url_b.to_string()
               return (Link(text, url, title_opt), advance(title_cur))
             }
             break
           }
-          title = title + String::make(1, peek(title_cur).unwrap())
+          title_b.write_string(
+            String::make(1, peek(title_cur).unwrap()),
+          )
           title_cur = advance(title_cur)
         }
-        url = url + " "
+        url_b.write_string(" ")
       } else {
-        url = url + " "
+        url_b.write_string(" ")
         cur = after_space
       }
     } else {
-      url = url + String::make(1, c)
+      url_b.write_string(String::make(1, c))
       cur = advance(cur)
     }
   }
 
   if peek(cur).is_some() && peek(cur).unwrap() == ')' {
-    (Link(text, url, None), advance(cur))
+    (Link(text, url_b.to_string(), None), advance(cur))
   } else {
-    (Text("[" + inlines_to_raw_text(text) + "](" + url), cur)
+    (Text("[" + inlines_to_raw_text(text) + "](" + url_b.to_string()), cur)
   }
 }
 
@@ -305,7 +310,7 @@ fn parse_image(ctx : InlineCtx) -> (Inline, InlineCtx) {
   }
   cur = advance(cur)
 
-  let mut url = ""
+  let url_b = StringBuilder::new()
   while true {
     if peek(cur).is_none() || peek(cur).unwrap() == ')' {
       break
@@ -320,7 +325,7 @@ fn parse_image(ctx : InlineCtx) -> (Inline, InlineCtx) {
         ) {
         let title_char = peek(after_space).unwrap()
         let mut title_cur = advance(after_space)
-        let mut title = ""
+        let title_b = StringBuilder::new()
         while true {
           if peek(title_cur).is_none() {
             break
@@ -328,7 +333,9 @@ fn parse_image(ctx : InlineCtx) -> (Inline, InlineCtx) {
           if peek(title_cur).unwrap() == title_char {
             title_cur = advance(title_cur)
             if peek(title_cur).is_some() && peek(title_cur).unwrap() == ')' {
+              let title = title_b.to_string()
               let t = if title.length() > 0 { Some(title) } else { None }
+              let url = url_b.to_string()
               return (
                 Image(inlines_to_raw_text(alt_text), url, t),
                 advance(title_cur),
@@ -336,24 +343,26 @@ fn parse_image(ctx : InlineCtx) -> (Inline, InlineCtx) {
             }
             break
           }
-          title = title + String::make(1, peek(title_cur).unwrap())
+          title_b.write_string(
+            String::make(1, peek(title_cur).unwrap()),
+          )
           title_cur = advance(title_cur)
         }
-        url = url + " "
+        url_b.write_string(" ")
       } else {
-        url = url + " "
+        url_b.write_string(" ")
         cur = after_space
       }
     } else {
-      url = url + String::make(1, c)
+      url_b.write_string(String::make(1, c))
       cur = advance(cur)
     }
   }
 
   if peek(cur).is_some() && peek(cur).unwrap() == ')' {
-    (Image(inlines_to_raw_text(alt_text), url, None), advance(cur))
+    (Image(inlines_to_raw_text(alt_text), url_b.to_string(), None), advance(cur))
   } else {
-    (Text("![" + inlines_to_raw_text(alt_text) + "](" + url), cur)
+    (Text("![" + inlines_to_raw_text(alt_text) + "](" + url_b.to_string()), cur)
   }
 }
 
