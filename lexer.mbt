@@ -92,7 +92,7 @@ fn parse_inlines_until(
         cur = advance(cur)
       }
       _ => {
-        let mut text = ""
+        let sb = StringBuilder::new()
         while true {
           let ch2 = peek(cur)
           if ch2.is_none() {
@@ -111,9 +111,10 @@ fn parse_inlines_until(
             c2 == '\n' {
             break
           }
-          text = text + String::make(1, c2)
+          sb.write_string(String::make(1, c2))
           cur = advance(cur)
         }
+        let text = sb.to_string()
         if text.length() > 0 {
           nodes.push(Text(text))
         }
