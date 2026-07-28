@@ -6,7 +6,7 @@ readme = "README.mbt.md"
 
 repository = "https://github.com/Mr-Houjie/mbt-markdown"
 
-license = "Apache-2.0"
+license = "MIT"
 
 keywords = ["markdown", "parser", "html", "commonmark"]
 

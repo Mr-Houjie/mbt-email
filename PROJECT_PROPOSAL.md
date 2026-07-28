@@ -3,8 +3,8 @@
 ## 一、项目名称与 GitHub 仓库
 
 - **项目名称**：mbt-markdown（基于 MoonBit 的 Markdown 解析与 HTML 渲染库）
-- **GitHub 仓库**：https://github.com/Mr-Houjie/mbt-markdown（待创建）
-- **许可证**：Apache-2.0 ｜ **语言**：MoonBit ≥ 0.1.20260629
+- **GitHub 仓库**：https://github.com/Mr-Houjie/mbt-markdown
+- **许可证**：MIT ｜ **语言**：MoonBit ≥ 0.1.20260629
 
 ## 二、项目简介
 
@@ -55,43 +55,4 @@
 
 **外部参考**：CommonMark Spec 0.31.2（公开规范，https://spec.commonmark.org/）
 
-## 六、当前项目规模
 
-| 指标 | 数值 |
-|------|------|
-| MoonBit 有效代码行数 | ~1235 LOC |
-| 源文件数 | 8 个 `.mbt` 文件 |
-| 单元测试数 | 8 项，全部通过 |
-| 外部依赖 | 0（仅 MoonBit 标准库） |
-| 构建状态 | `moon build` 零错误 |
-| 运行平台 | wasm-gc（默认目标） |
-
-## 七、后续开发计划（参赛期间）
-
-在现有基础上，计划在赛事期间（以 2026 年 4 月 29 日后为有效统计区间）继续扩展以下功能：
-
-### Phase 1：语法扩展（短期）
-- [ ] GFM 表格支持（`| col1 | col2 |`）
-- [ ] 任务列表（`- [x] done` / `- [ ] todo`）
-- [ ] 删除线（`~~text~~`）
-- [ ] 自动链接（`<url>` / 裸 URL 自动识别）
-
-### Phase 2：质量提升（中期）
-- [ ] CommonMark spec 验证测试套件
-- [ ] 错误恢复与友好的错误信息
-- [ ] mooncakes.io 发布
-- [ ] 性能基准测试
-
-### Phase 3：生态集成（长期）
-- [ ] 自定义渲染器接口（支持渲染为其他格式，如 LaTeX）
-- [ ] Markdown 语法树遍历/转换工具
-- [ ] 与 MoonBit 文档生成工具集成
-
-## 八、验收标准
-
-1. ✅ `moon build` 零错误通过
-2. ✅ `moon test` 全部测试通过
-3. ✅ `moon run cmd/main` 可正常运行并输出 HTML
-4. ✅ 支持 ATX 标题、段落、emphasis、strong、code、link、image、code block、blockquote、list、thematic break
-5. ✅ AST 类型系统完整可扩展
-6. 🔄 后续：mooncakes.io 发布 + GFM 扩展语法
