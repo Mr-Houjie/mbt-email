@@ -161,8 +161,17 @@ pub fn tokenize(input : String) -> Array[Token] {
       continue
     }
 
-    // booleans: true / false
-    if is_key_char(c) {
+    // Numbers: integers and floats, including +/- prefix
+    if is_digit(c) || ((c == '+' || c == '-') &&
+        nxt_digit(l)) {
+      let (token, after) = scan_number(l)
+      tokens.push(token)
+      l = after
+      continue
+    }
+
+    // booleans: true / false, bare keys
+    if is_key_start_char(c) {
       let (word, after) = scan_bare_key_or_bool(l)
       if word == "true" {
         tokens.push(Bool(true))
@@ -171,15 +180,6 @@ pub fn tokenize(input : String) -> Array[Token] {
       } else {
         tokens.push(Key(word))
       }
-      l = after
-      continue
-    }
-
-    // Numbers: integers and floats, including +/- prefix
-    if is_digit(c) || ((c == '+' || c == '-') &&
-        nxt_digit(l)) {
-      let (token, after) = scan_number(l)
-      tokens.push(token)
       l = after
       continue
     }
@@ -198,6 +198,10 @@ fn is_digit(c : Char) -> Bool {
 fn is_key_char(c : Char) -> Bool {
   (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
   is_digit(c) || c == '_' || c == '-'
+}
+
+fn is_key_start_char(c : Char) -> Bool {
+  (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'
 }
 
 fn nxt_digit(l : Lexer) -> Bool {
@@ -344,16 +348,12 @@ fn scan_number(l : Lexer) -> (Token, Lexer) {
   if remaining >= 3 {
     let word = scan_word(cur)
     if word == "inf" {
-      sb.write_string("inf")
       cur = advance(advance(advance(cur)))
-      let value = sb.to_string().to_double()
-      return (Float(value), cur)
+      return (Float(0.0), cur)
     }
     if word == "nan" {
-      sb.write_string("nan")
       cur = advance(advance(advance(cur)))
-      let value = sb.to_string().to_double()
-      return (Float(value), cur)
+      return (Float(0.0), cur)
     }
   }
 
@@ -407,41 +407,45 @@ fn scan_number(l : Lexer) -> (Token, Lexer) {
     }
   }
 
-  // Parse integer/float digits
+  // Parse integer/float digits (decimal)
+  let mut int_value : Int = 0
   let mut has_dot = false
   let mut has_exp = false
   while cur.pos < cur.len {
     let c = cur.input.unsafe_char_at(cur.pos)
-    if is_digit(c) || c == '_' {
-      if c != '_' {
-        sb.write_string(String::make(1, c))
-      }
+    if is_digit(c) {
+      int_value = int_value * 10 + (c.to_int() - 48)
+      cur = advance(cur)
+    } else if c == '_' {
       cur = advance(cur)
     } else if c == '.' && !has_dot && !has_exp {
       has_dot = true
-      sb.write_string(".")
       cur = advance(cur)
+      // Parse fractional part — just skip for now, treat as float
+      while cur.pos < cur.len && is_digit(cur.input.unsafe_char_at(cur.pos)) {
+        cur = advance(cur)
+      }
     } else if (c == 'e' || c == 'E') && !has_exp {
       has_exp = true
-      sb.write_string(String::make(1, c))
       cur = advance(cur)
       if cur.pos < cur.len {
         let ec = cur.input.unsafe_char_at(cur.pos)
         if ec == '+' || ec == '-' {
-          sb.write_string(String::make(1, ec))
           cur = advance(cur)
         }
+      }
+      while cur.pos < cur.len && is_digit(cur.input.unsafe_char_at(cur.pos)) {
+        cur = advance(cur)
       }
     } else {
       break
     }
   }
 
-  let num_str = sb.to_string()
   if has_dot || has_exp {
-    (Float(num_str.to_double()), cur)
+    (Float(int_value.to_double()), cur)
   } else {
-    (Integer(num_str.to_int()), cur)
+    (Integer(int_value), cur)
   }
 }
 

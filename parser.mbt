@@ -47,7 +47,7 @@ fn parse_toplevel(p : Parser) -> (TomlValue, Parser) {
       _ => {
         let (keys, value, after) = parse_keyval(cur)
         cur = after
-        let mut full_keys : Array[String] = []
+        let full_keys : Array[String] = []
         let mut pi = 0
         while pi < table_path.length() {
           full_keys.push(table_path[pi])
@@ -72,25 +72,23 @@ fn set_dotted_keys(
   keys : Array[String],
   value : TomlValue,
 ) -> TomlValue {
-  let mut r = root
-  let mut i = 0
-  while i < keys.length() - 1 {
-    let k = keys[i]
-    let existing = table_get(r, k)
-    let next = match existing {
-      None => Table([])
-      Some(v) => v
-    }
-    let next_table = match next {
-      Table(_) => next
-      _ => Table([])
-    }
-    r = table_set(r, k, next_table)
-    r = next_table
-    i = i + 1
+  if keys.length() == 1 {
+    return table_set(root, keys[0], value)
   }
-  let last_key = keys[keys.length() - 1]
-  table_set(r, last_key, value)
+  // Build nested structure from the innermost out
+  let mut result = value
+  let mut i = keys.length() - 1
+  while i >= 1 {
+    let inner_key = keys[i]
+    let parent_key = keys[i - 1]
+    let inner_table = Table([(inner_key, result)])
+    if i == 1 {
+      return table_set(root, keys[0], inner_table)
+    }
+    result = TomlValue::Table([(inner_key, result)])
+    i = i - 1
+  }
+  root
 }
 
 /// Parse a table header: [table.name] or [[array.name]]

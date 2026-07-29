@@ -1,5 +1,5 @@
 import {
-  "houjie/mbt-markdown" @lib,
+  "houjie/mbt-toml" @lib,
 }
 
 options(
