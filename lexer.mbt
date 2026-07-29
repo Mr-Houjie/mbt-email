@@ -105,8 +105,7 @@ pub fn tokenize(input : String) -> Array[Token] {
 
     // Brackets: [] or [[ or ]]
     if c == '[' {
-      let nxt = peek(l, 1)
-      if nxt.is_some() && nxt.unwrap() == '[' {
+      if opt_char_eq(peek(l, 1), '[') {
         tokens.push(DoubleLBracket)
         l = advance(advance(l))
       } else {
@@ -116,8 +115,7 @@ pub fn tokenize(input : String) -> Array[Token] {
       continue
     }
     if c == ']' {
-      let nxt = peek(l, 1)
-      if nxt.is_some() && nxt.unwrap() == ']' {
+      if opt_char_eq(peek(l, 1), ']') {
         tokens.push(DoubleRBracket)
         l = advance(advance(l))
       } else {
@@ -129,10 +127,8 @@ pub fn tokenize(input : String) -> Array[Token] {
 
     // Strings: "basic" or 'literal' or """multiline""" or '''multiline literal'''
     if c == '"' {
-      let nxt1 = peek(l, 1)
-      let nxt2 = peek(l, 2)
-      let multiline = nxt1.is_some() && nxt1.unwrap() == '"' &&
-                      nxt2.is_some() && nxt2.unwrap() == '"'
+      let multiline = opt_char_eq(peek(l, 1), '"') &&
+                      opt_char_eq(peek(l, 2), '"')
       if multiline {
         let (s, after) = scan_multi_line_string(advance(advance(advance(l))))
         tokens.push(String_(s))
@@ -145,10 +141,8 @@ pub fn tokenize(input : String) -> Array[Token] {
       continue
     }
     if c == '\'' {
-      let nxt1 = peek(l, 1)
-      let nxt2 = peek(l, 2)
-      let multiline = nxt1.is_some() && nxt1.unwrap() == '\'' &&
-                      nxt2.is_some() && nxt2.unwrap() == '\''
+      let multiline = opt_char_eq(peek(l, 1), '\'') &&
+                      opt_char_eq(peek(l, 2), '\'')
       if multiline {
         let (s, after) = scan_multi_line_literal(advance(advance(advance(l))))
         tokens.push(String_(s))
@@ -204,9 +198,19 @@ fn is_key_start_char(c : Char) -> Bool {
   (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'
 }
 
+/// Helper: check if an optional char matches a given char.
+fn opt_char_eq(opt : Char?, expected : Char) -> Bool {
+  match opt {
+    Some(c) => c == expected
+    None => false
+  }
+}
+
 fn nxt_digit(l : Lexer) -> Bool {
-  let nxt = peek(l, 1)
-  nxt.is_some() && is_digit(nxt.unwrap())
+  match peek(l, 1) {
+    Some(c) => is_digit(c)
+    None => false
+  }
 }
 
 fn scan_bare_key_or_bool(l : Lexer) -> (String, Lexer) {
@@ -266,10 +270,8 @@ fn scan_multi_line_string(l : Lexer) -> (String, Lexer) {
   while cur.pos < cur.len {
     let c = cur.input.unsafe_char_at(cur.pos)
     if c == '"' {
-      let n1 = peek(cur, 1)
-      let n2 = peek(cur, 2)
-      if n1.is_some() && n1.unwrap() == '"' &&
-         n2.is_some() && n2.unwrap() == '"' {
+      if opt_char_eq(peek(cur, 1), '"') &&
+         opt_char_eq(peek(cur, 2), '"') {
         cur = advance(advance(advance(cur)))
         break
       }
@@ -318,10 +320,8 @@ fn scan_multi_line_literal(l : Lexer) -> (String, Lexer) {
   while cur.pos < cur.len {
     let c = cur.input.unsafe_char_at(cur.pos)
     if c == '\'' {
-      let n1 = peek(cur, 1)
-      let n2 = peek(cur, 2)
-      if n1.is_some() && n1.unwrap() == '\'' &&
-         n2.is_some() && n2.unwrap() == '\'' {
+      if opt_char_eq(peek(cur, 1), '\'') &&
+         opt_char_eq(peek(cur, 2), '\'') {
         cur = advance(advance(advance(cur)))
         break
       }
