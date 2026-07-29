@@ -19,7 +19,7 @@ test "parse_integer" {
 test "parse_float" {
   let doc = @houjie/mbt-toml.parse("pi = 3.14\n")
   let output = @houjie/mbt-toml.to_toml(doc)
-  assert_true(output.length() > 0)
+  assert_eq(output, "pi = 3.14\n")
 }
 
 ///| Boolean true

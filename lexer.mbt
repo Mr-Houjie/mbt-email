@@ -411,20 +411,23 @@ fn scan_number(l : Lexer) -> (Token, Lexer) {
   let mut int_value : Int = 0
   let mut has_dot = false
   let mut has_exp = false
+  let mut frac_value : Int = 0
+  let mut frac_digits : Int = 0
   while cur.pos < cur.len {
     let c = cur.input.unsafe_char_at(cur.pos)
     if is_digit(c) {
-      int_value = int_value * 10 + (c.to_int() - 48)
+      if has_dot {
+        frac_value = frac_value * 10 + (c.to_int() - 48)
+        frac_digits = frac_digits + 1
+      } else {
+        int_value = int_value * 10 + (c.to_int() - 48)
+      }
       cur = advance(cur)
     } else if c == '_' {
       cur = advance(cur)
     } else if c == '.' && !has_dot && !has_exp {
       has_dot = true
       cur = advance(cur)
-      // Parse fractional part — just skip for now, treat as float
-      while cur.pos < cur.len && is_digit(cur.input.unsafe_char_at(cur.pos)) {
-        cur = advance(cur)
-      }
     } else if (c == 'e' || c == 'E') && !has_exp {
       has_exp = true
       cur = advance(cur)
@@ -443,7 +446,17 @@ fn scan_number(l : Lexer) -> (Token, Lexer) {
   }
 
   if has_dot || has_exp {
-    (Float(int_value.to_double()), cur)
+    let mut dbl : Double = int_value.to_double()
+    if has_dot && frac_digits > 0 {
+      let mut frac_div : Double = 1.0
+      let mut fi = 0
+      while fi < frac_digits {
+        frac_div = frac_div * 10.0
+        fi = fi + 1
+      }
+      dbl = dbl + frac_value.to_double() / frac_div
+    }
+    (Float(dbl), cur)
   } else {
     (Integer(int_value), cur)
   }
