@@ -1,57 +1,65 @@
-/// AST node types for Markdown documents.
-/// Represents the structural elements of a Markdown document.
+/// TOML AST node types.
+/// Represents values in a TOML document.
 
-/// Inline-level elements (content inside paragraphs, headings, etc.)
-pub enum Inline {
-  /// Plain text content
-  Text(String)
-  /// Soft line break (newline in source, rendered as space)
-  SoftBreak
-  /// Hard line break (two trailing spaces or backslash)
-  HardBreak
-  /// Italic / emphasis: *text* or _text_
-  Emphasis(Array[Inline])
-  /// Bold / strong emphasis: **text** or __text__
-  Strong(Array[Inline])
-  /// Inline code: `code`
-  Code(String)
-  /// Inline link: [text](url) or [text](url "title")
-  Link(Array[Inline], String, String?)
-  /// Inline image: ![alt](url) or ![alt](url "title")
-  Image(String, String, String?)
+/// A TOML value.
+pub enum TomlValue {
+  /// TOML string (basic, literal, multi-line)
+  Str(String)
+  /// TOML integer (decimal, hex, octal, binary)
+  Integer(Int)
+  /// TOML float (regular, inf, nan)
+  Float(Double)
+  /// TOML boolean
+  Bool(Bool)
+  /// TOML array (heterogeneous values)
+  Array(Array[TomlValue])
+  /// TOML table (ordered key-value pairs)
+  Table(Array[(String, TomlValue)])
 }
 
-/// Block-level elements (top-level structure of a Markdown document)
-pub enum Block {
-  /// ATX heading: # to ######
-  Heading(Int, Array[Inline])
-  /// Paragraph of inline content
-  Paragraph(Array[Inline])
-  /// Fenced code block: ```lang ... ```
-  CodeBlock(String?, String)
-  /// Thematic break: --- or *** or ___
-  ThematicBreak
-  /// Blockquote: > text
-  Blockquote(Array[Block])
-  /// Unordered / ordered list
-  ListBlock(ListMode, Array[ListItem])
-  /// Raw HTML block (pass-through)
-  RawHtmlBlock(String)
+/// Look up a key in a TomlValue::Table.
+/// Returns None if the value is not a Table or key not found.
+pub fn table_get(table : TomlValue, key : String) -> TomlValue? {
+  match table {
+    Table(entries) => {
+      let mut i = 0
+      while i < entries.length() {
+        let (k, v) = entries[i]
+        if k == key {
+          return Some(v)
+        }
+        i = i + 1
+      }
+      None
+    }
+    _ => None
+  }
 }
 
-/// Mode of a list: bullet or ordered
-pub enum ListMode {
-  Bullet(String)
-  Ordered(Int)
-}
-
-/// A single list item
-pub struct ListItem {
-  blocks : Array[Block]
-  checked : Bool?
-}
-
-/// A complete Markdown document
-pub struct Document {
-  blocks : Array[Block]
+/// Set a key in a table. Creates the table if needed.
+pub fn table_set(
+  table : TomlValue,
+  key : String,
+  value : TomlValue,
+) -> TomlValue {
+  match table {
+    Table(entries) => {
+      let mut found = false
+      let mut i = 0
+      while i < entries.length() {
+        let (k, _) = entries[i]
+        if k == key {
+          entries[i] = (key, value)
+          found = true
+          break
+        }
+        i = i + 1
+      }
+      if !found {
+        entries.push((key, value))
+      }
+      Table(entries)
+    }
+    _ => Table([(key, value)])
+  }
 }
