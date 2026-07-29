@@ -2,57 +2,52 @@
 
 ## 一、项目名称与 GitHub 仓库
 
-- **项目名称**：mbt-markdown（基于 MoonBit 的 Markdown 解析与 HTML 渲染库）
-- **GitHub 仓库**：https://github.com/Mr-Houjie/mbt-markdown
+- **项目名称**：mbt-toml（基于 MoonBit 的 TOML 配置解析与序列化库）
+- **GitHub 仓库**：https://github.com/Mr-Houjie/mbt-toml
 - **许可证**：MIT ｜ **语言**：MoonBit ≥ 0.1.20260629
 
 ## 二、项目简介
 
-`mbt-markdown` 是一个使用 MoonBit 语言原生实现的 Markdown 解析与 HTML 渲染库。它将 Markdown 文本解析为自定义 AST（抽象语法树），再将 AST 渲染为规范 HTML，为 MoonBit 生态提供开箱即用的文档处理基础设施。
+`mbt-toml` 是一个使用 MoonBit 语言原生实现的 TOML v1.0 配置解析与序列化库。它将 TOML 文本解析为 MoonBit 原生数据结构（基于代数数据类型的 AST），并支持将数据结构序列化回 TOML 格式，为 MoonBit 生态提供开箱即用的配置管理基础设施。
 
 **架构上分为三层**：
-1. **词法/内联解析层（Lexer）**：字符级扫描，处理 emphasis、strong、code span、link、image 等内联元素的精确解析与嵌套
-2. **语法/块级解析层（Parser）**：逐行扫描的递归下降解析器，自动识别 heading、paragraph、code fence、blockquote、list、thematic break 等块级元素
-3. **HTML 渲染层（Renderer）**：基于 AST 遍历的递归渲染器，输出带规范 HTML 转义的字符串
+1. **词法分析层（Lexer）**：字符级扫描，处理字符串、数字、布尔、日期时间、注释等 Token 的精确识别
+2. **语法解析层（Parser）**：递归下降解析器，处理键值对、表头、内联表、数组表、点分隔键等 TOML 结构
+3. **序列化层（Serializer）**：将 MoonBit 数据结构序列化为规范 TOML 文本
 
-**核心特色**：MoonBit 原生实现、纯 MoonBit 零外部依赖、手写递归下降解析器、支持 CommonMark 核心语法子集、8 项单元测试全覆盖。
+**核心特色**：MoonBit 原生实现、纯 MoonBit 零外部依赖、手写递归下降解析器、完整支持 TOML v1.0 规范、双向解析与序列化。
 
 ## 三、项目方向与适用场景
 
-**大赛方向归属**：对应大赛"**应用生态**"方向下的"**Markdown to HTML 工具**"（见大赛章程《项目方向》章节），同时可作为 MoonBit 生态的基础设施组件服务于文档生成、静态网站构建等场景。
+**大赛方向归属**：对应大赛"**应用生态**"方向下的**配置管理/基础设施**工具。TOML 是 MoonBit 生态的核心配置文件格式（`moon.mod`、`moon.pkg` 均使用 TOML），但 MoonBit 生态中尚无原生 TOML 解析器，本项目直接填补这一关键基础设施空白。
 
-**定位**：MoonBit 生态的 Markdown 处理基础库，填补 MoonBit 在文档解析与渲染领域的空白。生态中虽有 `cmark.mbt`（CommonMark 解析器）和 `mizchi/markdown`（增量解析器）等项目，但本项目的差异化定位在于：
-
-- **简洁轻量**：~1235 行有效代码，核心逻辑清晰可读，适合作为 MoonBit 学习参考与二次开发起点
-- **零外部依赖**：仅依赖 MoonBit 标准库 `builtin`，无任何第三方包依赖
-- **手写解析器**：非编译生成或移植，代码完全原创可控
+**定位**：MoonBit 生态的原生 TOML 配置解析与序列化基础库，为所有 MoonBit 项目的配置管理、工具链集成、构建系统提供标准化解决方案。
 
 **适用场景**：
-- MoonBit 生态中的文档渲染与文档站生成
-- MoonBit 项目的 README/文档预览工具
-- LLM 输出的 Markdown 内容渲染
-- 静态网站生成器（SSG）的基础组件
-- MoonBit 语言教学与解析器实现参考
+- MoonBit 项目的配置文件解析（`moon.mod`、`moon.pkg` 等）
+- MoonBit 构建工具与 IDE 插件的配置管理
+- 微服务/云原生应用的配置文件处理
+- CI/CD 流水线中的 MoonBit 工具集成
+- 跨语言项目的配置桥接
 
 ## 四、核心功能
 
-1. **完整的内联解析**：Text、SoftBreak、HardBreak、Emphasis、Strong、Code、Link、Image 共 8 种 AST 节点
-2. **完整的块级解析**：Heading(1-6)、Paragraph、CodeBlock、ThematicBreak、Blockquote、ListBlock（有序/无序）、RawHtmlBlock
-3. **HTML 渲染器**：递归 AST 遍历 + 5 字符 HTML 转义（`& < > " '`）
-4. **公共 API**：`parse()` 返回 AST Document、`md_to_html()` 一步完成 Markdown → HTML
-5. **CLI 演示**：`moon run cmd/main` 可直接运行展示
-6. **工程化**：8 项单元测试（moon test 全通过）+ GitHub Actions CI 就绪
+1. **完整 TOML v1.0 语法支持**：字符串（基本/多行/字面量）、整数（十进制/十六进制/八进制/二进制）、浮点数、布尔、日期时间、注释
+2. **表结构解析**：标准表 `[table]`、内联表 `{key = value}`、数组表 `[[array]]`、点分隔键 `a.b.c`
+3. **数组解析**：支持异构数组与嵌套结构
+4. **双模式 API**：`parse()` 解析为通用 AST、`parse_typed()` 解析为强类型 Map/Struct
+5. **序列化支持**：将 MoonBit 数据结构序列化为 TOML 文本
+6. **错误恢复**：友好的解析错误信息，包含行号与上下文
+7. **工程化**：单元测试全覆盖 + GitHub Actions CI
 
 ## 五、项目性质
 
-**原创实现**（非移植）。代码 100% 由作者独立编写，解析器设计借鉴 CommonMark 规范的公开文法定义（属公开标准参考，非代码复制）。
+**原创实现**（非移植）。代码 100% 由作者独立编写，解析器设计借鉴 TOML v1.0 规范（https://toml.io）的公开 ABNF 文法定义（属公开标准参考，非代码复制）。
 
 **原创工程工作**：
-- 基于 MoonBit 代数数据类型（enum）自定义 AST 类型系统
-- 手写递归下降解析器（内联解析 → 块级解析两阶段设计）
-- 基于 `StringBuilder` 的增量 HTML 渲染器
-- 基于 `while` 循环而非函数式 `loop` 的线性扫描算法（适配 MoonBit 最新语法）
+- 基于 MoonBit 代数数据类型（enum）自定义 TOML AST 类型系统
+- 手写递归下降解析器（词法分析 → 语法分析两阶段设计）
+- 基于 MoonBit Trait 系统的可扩展序列化框架
+- 针对 TOML 特性（点分隔键、数组表）的专用解析算法
 
-**外部参考**：CommonMark Spec 0.31.2（公开规范，https://spec.commonmark.org/）
-
-
+**外部参考**：TOML v1.0.0 规范（https://toml.io/en/v1.0.0）
