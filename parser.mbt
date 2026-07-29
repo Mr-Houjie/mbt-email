@@ -189,12 +189,101 @@ fn parse_key(p : Parser) -> (Array[String], Parser) {
 /// Parse a TOML value.
 fn parse_value(p : Parser) -> (TomlValue, Parser) {
   let token = peek_token(p)
-  let cur = next(p)
   match token {
-    String_(s) => (Str(s), cur)
-    Integer(i) => (Integer(i), cur)
-    Float(f) => (Float(f), cur)
-    Bool(b) => (Bool(b), cur)
-    _ => (Str(""), cur)
+    String_(s) => {
+      let cur = next(p)
+      (Str(s), cur)
+    }
+    Integer(i) => {
+      let cur = next(p)
+      (Integer(i), cur)
+    }
+    Float(f) => {
+      let cur = next(p)
+      (Float(f), cur)
+    }
+    Bool(b) => {
+      let cur = next(p)
+      (Bool(b), cur)
+    }
+    LBracket => parse_array(p)
+    LBrace => parse_inline_table(p)
+    _ => {
+      let cur = next(p)
+      (Str(""), cur)
+    }
   }
+}
+
+/// Parse an array: [val1, val2, ...]
+fn parse_array(p : Parser) -> (TomlValue, Parser) {
+  let mut cur = next(p) // skip [
+  let values : Array[TomlValue] = []
+
+  while true {
+    match peek_token(cur) {
+      RBracket => {
+        cur = next(cur)
+        break
+      }
+      Newline => {
+        cur = next(cur)
+        continue
+      }
+      Comma => {
+        cur = next(cur)
+        continue
+      }
+      EOF => break
+      _ => {
+        let (val, after) = parse_value(cur)
+        values.push(val)
+        cur = after
+      }
+    }
+  }
+
+  (Array(values), cur)
+}
+
+/// Parse an inline table: {key = value, ...}
+fn parse_inline_table(p : Parser) -> (TomlValue, Parser) {
+  let mut cur = next(p) // skip {
+  let entries : Array[(String, TomlValue)] = []
+
+  while true {
+    match peek_token(cur) {
+      RBrace => {
+        cur = next(cur)
+        break
+      }
+      Newline | Comma => {
+        cur = next(cur)
+        continue
+      }
+      EOF => break
+      _ => {
+        // Parse key
+        let (keys, after_key) = parse_key(cur)
+        cur = after_key
+        // Expect =
+        match peek_token(cur) {
+          Equals => cur = next(cur)
+          _ => break
+        }
+        // Parse value
+        let (val, after_val) = parse_value(cur)
+        cur = after_val
+        // For inline tables, only use the last key segment
+        let key = if keys.length() > 0 {
+          keys[keys.length() - 1]
+        } else {
+          ""
+        }
+        entries.push((key, val))
+      }
+    }
+  }
+
+  (Table(entries), cur)
 }
