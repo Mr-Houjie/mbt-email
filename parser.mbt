@@ -75,19 +75,25 @@ fn set_dotted_keys(
   if keys.length() == 1 {
     return table_set(root, keys[0], value)
   }
-  // Build nested structure from the innermost out
-  let mut result = value
-  let mut i = keys.length() - 1
-  while i >= 1 {
-    let inner_key = keys[i]
-    let parent_key = keys[i - 1]
-    let inner_table = Table([(inner_key, result)])
-    if i == 1 {
-      return table_set(root, keys[0], inner_table)
+  // Navigate to the innermost table and set the value there.
+  // Since arrays are references, modifying the innermost table
+  // will also update the parent tables that hold it.
+  let mut r = root
+  let mut i = 0
+  while i < keys.length() - 1 {
+    let k = keys[i]
+    let existing = table_get(r, k)
+    let sub = match existing {
+      Some(Table(_)) => existing.unwrap()
+      _ => Table([])
     }
-    result = TomlValue::Table([(inner_key, result)])
-    i = i - 1
+    r = table_set(r, k, sub)
+    r = sub
+    i = i + 1
   }
+  // r is now the innermost table; set the final value.
+  // Return root (which was modified via shared array references).
+  let _ = table_set(r, keys[keys.length() - 1], value)
   root
 }
 
