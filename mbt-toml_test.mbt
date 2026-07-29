@@ -92,3 +92,32 @@ test "parse_hex_integer" {
   let output = @houjie/mbt-toml.to_toml(doc)
   assert_eq(output, "color = 255\n")
 }
+
+///| Multi-line basic string
+test "parse_multiline_string" {
+  let input = "text = \"\"\"\nhello\nworld\"\"\"\n"
+  let doc = @houjie/mbt-toml.parse(input)
+  let output = @houjie/mbt-toml.to_toml(doc)
+  assert_eq(output, "text = \"hello\\nworld\"\n")
+}
+
+///| Literal string (no escaping)
+test "parse_literal_string" {
+  let doc = @houjie/mbt-toml.parse("path = '\\usr\\local'\n")
+  let output = @houjie/mbt-toml.to_toml(doc)
+  assert_eq(output, "path = \"\\\\usr\\\\local\"\n")
+}
+
+///| Empty document
+test "parse_empty" {
+  let doc = @houjie/mbt-toml.parse("")
+  let output = @houjie/mbt-toml.to_toml(doc)
+  assert_eq(output, "")
+}
+
+///| String with escape sequences
+test "parse_escaped_string" {
+  let doc = @houjie/mbt-toml.parse("msg = \"line1\\nline2\"\n")
+  let output = @houjie/mbt-toml.to_toml(doc)
+  assert_eq(output, "msg = \"line1\\nline2\"\n")
+}
