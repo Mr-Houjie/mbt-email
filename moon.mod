@@ -1,15 +1,15 @@
-name = "houjie/mbt-toml"
+name = "houjie/mbt-email"
 
 version = "0.1.0"
 
 readme = "README.mbt.md"
 
-repository = "https://github.com/Mr-Houjie/mbt-toml"
+repository = "https://github.com/Mr-Houjie/mbt-email"
 
 license = "MIT"
 
-keywords = ["toml", "parser", "config", "serializer"]
+keywords = ["email", "mime", "parser", "rfc5322", "rfc2045"]
 
 preferred_target = "wasm-gc"
 
-description = "A TOML configuration parser and serializer written in pure MoonBit. Supports tables, arrays, inline tables, dotted keys, and all TOML v1.0 data types."
+description = "An RFC 5322/2045 email address and MIME message parser written in pure MoonBit. Supports email address validation, MIME multipart parsing, and message serialization."

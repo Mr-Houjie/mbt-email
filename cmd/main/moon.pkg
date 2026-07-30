@@ -1,5 +1,5 @@
 import {
-  "houjie/mbt-toml" @lib,
+  "houjie/mbt-email" @lib,
 }
 
 options(

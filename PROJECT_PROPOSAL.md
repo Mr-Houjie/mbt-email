@@ -2,52 +2,54 @@
 
 ## 一、项目名称与 GitHub 仓库
 
-- **项目名称**：mbt-toml（基于 MoonBit 的 TOML 配置解析与序列化库）
-- **GitHub 仓库**：https://github.com/Mr-Houjie/mbt-toml
+- **项目名称**：mbt-email（基于 MoonBit 的邮件地址与 MIME 消息解析库）
+- **GitHub 仓库**：https://github.com/Mr-Houjie/mbt-email
 - **许可证**：MIT ｜ **语言**：MoonBit ≥ 0.1.20260629
 
 ## 二、项目简介
 
-`mbt-toml` 是一个使用 MoonBit 语言原生实现的 TOML v1.0 配置解析与序列化库。它将 TOML 文本解析为 MoonBit 原生数据结构（基于代数数据类型的 AST），并支持将数据结构序列化回 TOML 格式，为 MoonBit 生态提供开箱即用的配置管理基础设施。
+`mbt-email` 是一个使用 MoonBit 语言原生实现的 RFC 5322 邮件地址解析与 RFC 2045/2046 MIME 消息解析库。它将原始邮件文本解析为 MoonBit 原生数据结构（基于代数数据类型的 AST），并支持将数据结构序列化回标准邮件格式，为 MoonBit 生态提供邮件协议处理基础设施。
 
-**架构上分为三层**：
-1. **词法分析层（Lexer）**：字符级扫描，处理字符串、数字、布尔、日期时间、注释等 Token 的精确识别
-2. **语法解析层（Parser）**：递归下降解析器，处理键值对、表头、内联表、数组表、点分隔键等 TOML 结构
-3. **序列化层（Serializer）**：将 MoonBit 数据结构序列化为规范 TOML 文本
+**架构上分为四层**：
+1. **词法分析层（Lexer）**：字符级扫描，处理邮件头字段名/值、引用字符串、域字面量、MIME 边界标记、编码字等 Token
+2. **语法解析层（Parser）**：递归下降解析器，处理邮件地址（local-part@domain）、邮件头、MIME 多部分消息体、Content-Type/Content-Disposition 等结构化头字段
+3. **中间表示层（AST）**：基于代数数据类型的邮件消息 AST，含 EmailAddress、Header、MimePart、Message 等核心类型
+4. **序列化层（Serializer）**：将 MoonBit AST 序列化为符合 RFC 5322/2045 规范的邮件文本
 
-**核心特色**：MoonBit 原生实现、纯 MoonBit 零外部依赖、手写递归下降解析器、完整支持 TOML v1.0 规范、双向解析与序列化。
+**核心特色**：MoonBit 原生实现、纯 MoonBit 零外部依赖、手写递归下降解析器、覆盖 RFC 5322/2045/2046 三层规范、双向解析与序列化。
 
 ## 三、项目方向与适用场景
 
-**大赛方向归属**：对应大赛"**应用生态**"方向下的**配置管理/基础设施**工具。TOML 是 MoonBit 生态的核心配置文件格式（`moon.mod`、`moon.pkg` 均使用 TOML），但 MoonBit 生态中尚无原生 TOML 解析器，本项目直接填补这一关键基础设施空白。
+**大赛方向归属**：对应大赛"**应用生态**"方向下的**协议解析/网络基础设施**工具。邮件是互联网最基础的通信协议之一，但 MoonBit 生态中尚无原生邮件解析器，本项目填补这一关键空白，为 MoonBit 的邮件客户端、自动化邮件处理、安全审计等场景提供基础设施。
 
-**定位**：MoonBit 生态的原生 TOML 配置解析与序列化基础库，为所有 MoonBit 项目的配置管理、工具链集成、构建系统提供标准化解决方案。
+**定位**：MoonBit 生态的原生邮件/MIME 协议解析库，为 MoonBit 网络应用提供标准化的邮件处理能力。
 
 **适用场景**：
-- MoonBit 项目的配置文件解析（`moon.mod`、`moon.pkg` 等）
-- MoonBit 构建工具与 IDE 插件的配置管理
-- 微服务/云原生应用的配置文件处理
-- CI/CD 流水线中的 MoonBit 工具集成
-- 跨语言项目的配置桥接
+- 邮件客户端开发（解析和生成标准邮件格式）
+- 自动化邮件处理管道（新闻订阅、通知系统）
+- 邮件安全分析与审计工具
+- MIME 附件提取与内容识别
+- 邮件归档与检索系统
 
 ## 四、核心功能
 
-1. **完整 TOML v1.0 语法支持**：字符串（基本/多行/字面量）、整数（十进制/十六进制/八进制/二进制）、浮点数、布尔、日期时间、注释
-2. **表结构解析**：标准表 `[table]`、内联表 `{key = value}`、数组表 `[[array]]`、点分隔键 `a.b.c`
-3. **数组解析**：支持异构数组与嵌套结构
-4. **双模式 API**：`parse()` 解析为通用 AST、`parse_typed()` 解析为强类型 Map/Struct
-5. **序列化支持**：将 MoonBit 数据结构序列化为 TOML 文本
-6. **错误恢复**：友好的解析错误信息，包含行号与上下文
-7. **工程化**：单元测试全覆盖 + GitHub Actions CI
+1. **RFC 5322 邮件地址解析**：完整支持 dot-atom、quoted-string、domain-literal 等地址格式
+2. **邮件头解析**：From、To、Cc、Subject、Date、Message-ID 等标准头字段的结构化解析
+3. **MIME 多部分解析**：RFC 2046 multipart/mixed、multipart/alternative、multipart/related 等类型支持
+4. **Content-Type 解析**：MIME 类型/子类型及参数（charset、boundary、name 等）
+5. **Content-Disposition 解析**：inline/attachment 及 filename 参数提取
+6. **编码处理**：RFC 2047 编码字（encoded-word）解码、Base64/Quoted-Printable 内容传输编码识别
+7. **序列化支持**：将 AST 序列化为符合规范的邮件文本
+8. **工程化**：单元测试全覆盖 + GitHub Actions CI
 
 ## 五、项目性质
 
-**原创实现**（非移植）。代码 100% 由作者独立编写，解析器设计借鉴 TOML v1.0 规范（https://toml.io）的公开 ABNF 文法定义（属公开标准参考，非代码复制）。
+**原创实现**（非移植）。代码 100% 由作者独立编写，解析器设计参照 RFC 5322（Internet Message Format）、RFC 2045/2046（MIME）公开标准中的 ABNF 文法定义（属公开标准参考，非代码复制）。
 
 **原创工程工作**：
-- 基于 MoonBit 代数数据类型（enum）自定义 TOML AST 类型系统
+- 基于 MoonBit 代数数据类型（enum）自定义邮件/MIME AST 类型系统
 - 手写递归下降解析器（词法分析 → 语法分析两阶段设计）
+- 针对邮件头折叠（folding）、编码字（encoded-word）、MIME 边界识别等特性的专用解析算法
 - 基于 MoonBit Trait 系统的可扩展序列化框架
-- 针对 TOML 特性（点分隔键、数组表）的专用解析算法
 
-**外部参考**：TOML v1.0.0 规范（https://toml.io/en/v1.0.0）
+**外部参考**：RFC 5322（https://datatracker.ietf.org/doc/html/rfc5322）、RFC 2045/2046（https://datatracker.ietf.org/doc/html/rfc2046）

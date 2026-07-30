@@ -1,176 +1,171 @@
-/// TOML serializer: converts TomlValue AST back to TOML text.
+/// Email/MIME serializer: converts Message AST back to RFC 5322 text.
 
-/// Escape a string for TOML basic string output.
-fn escape_toml_string(s : String) -> String {
+/// Serialize a Message to RFC 5322 format text.
+pub fn message_to_string(msg : Message) -> String {
   let sb = StringBuilder::new()
-  let len = s.length()
-  let mut i = 0
-  while i < len {
-    let c = s.unsafe_char_at(i)
-    match c {
-      '\\' => sb.write_string("\\\\")
-      '"' => sb.write_string("\\\"")
-      '\b' => sb.write_string("\\b")
-      '\t' => sb.write_string("\\t")
-      '\n' => sb.write_string("\\n")
-      '\f' => sb.write_string("\\f")
-      '\r' => sb.write_string("\\r")
-      _ => sb.write_string(String::make(1, c))
-    }
-    i = i + 1
+
+  // Write headers
+  for header in msg.headers {
+    sb.write_string(header.name)
+    sb.write_string(": ")
+    sb.write_string(header.value)
+    sb.write_string("\r\n")
   }
+
+  // Empty line separating headers from body
+  sb.write_string("\r\n")
+
+  // Write body or MIME part
+  match msg.mime_part {
+    Some(part) => {
+      serialize_mime_part(part, sb)
+    }
+    None => {
+      match msg.body {
+        Some(b) => {
+          sb.write_string(b)
+          // Ensure trailing newline
+          if !b.has_suffix("\n") {
+            sb.write_string("\r\n")
+          }
+        }
+        None => ()
+      }
+    }
+  }
+
   sb.to_string()
 }
 
-/// Serialize a TomlValue to TOML format string.
-pub fn serialize(value : TomlValue) -> String {
-  let sb = StringBuilder::new()
-  serialize_table(value, sb, 0, "")
-  sb.to_string()
-}
+/// Serialize a MIME part to text.
+fn serialize_mime_part(part : MimePart, sb : StringBuilder) -> Unit {
+  match part.body {
+    Body::Text(text) => {
+      // Write part headers
+      for h in part.headers {
+        sb.write_string(h.name)
+        sb.write_string(": ")
+        sb.write_string(h.value)
+        sb.write_string("\r\n")
+      }
+      sb.write_string("\r\n")
+      sb.write_string(text)
+      if !text.has_suffix("\n") {
+        sb.write_string("\r\n")
+      }
+    }
+    Body::Binary(bytes) => {
+      for h in part.headers {
+        sb.write_string(h.name)
+        sb.write_string(": ")
+        sb.write_string(h.value)
+        sb.write_string("\r\n")
+      }
+      sb.write_string("\r\n")
+      // Write base64-encoded binary content
+      let encoded = base64_encode(bytes)
+      sb.write_string(encoded)
+      sb.write_string("\r\n")
+    }
+    Body::Multipart(parts) => {
+      // Find the boundary from Content-Type header
+      let boundary = find_boundary(part.headers)
+      let bd = match boundary {
+        Some(b) => b
+        None => "----=_moonbit_boundary_"
+      }
 
-/// Serialize a TOML table with optional prefix.
-fn serialize_table(
-  value : TomlValue,
-  sb : StringBuilder,
-  indent : Int,
-  prefix : String,
-) -> Unit {
-  match value {
-    Table(entries) => {
-      let mut i = 0
-      while i < entries.length() {
-        let (key, val) = entries[i]
-        serialize_keyval(key, val, sb, indent, prefix)
-        i = i + 1
+      match boundary {
+        Some(_) => () // Content-Type already written in message headers
+        None => {
+          // Write Content-Type with boundary
+          sb.write_string("Content-Type: multipart/mixed; boundary=\"")
+          sb.write_string(bd)
+          sb.write_string("\"\r\n")
+          sb.write_string("\r\n")
+        }
       }
-    }
-    _ => ()
-  }
-}
 
-/// Serialize a single key-value pair.
-fn serialize_keyval(
-  key : String,
-  value : TomlValue,
-  sb : StringBuilder,
-  indent : Int,
-  prefix : String,
-) -> Unit {
-  match value {
-    Table(entries) => {
-      // Nested table: write as [prefix.key] header
-      let full_key = if prefix.length() > 0 {
-        prefix + "." + key
-      } else {
-        key
+      // Write each part
+      for p in parts {
+        sb.write_string("--")
+        sb.write_string(bd)
+        sb.write_string("\r\n")
+        serialize_mime_part(p, sb)
       }
-      sb.write_string("[")
-      sb.write_string(full_key)
-      sb.write_string("]\n")
-      serialize_table(value, sb, indent + 1, full_key)
-    }
-    Array(_) => {
-      let full_key = if prefix.length() > 0 {
-        prefix + "." + key
-      } else {
-        key
-      }
-      sb.write_string(quote_key(full_key))
-      sb.write_string(" = ")
-      serialize_value(value, sb, indent)
-      sb.write_string("\n")
-    }
-    _ => {
-      if prefix.length() > 0 {
-        // Sub-key in a table
-        sb.write_string(quote_key(key))
-        sb.write_string(" = ")
-        serialize_value(value, sb, indent)
-        sb.write_string("\n")
-      } else {
-        sb.write_string(quote_key(key))
-        sb.write_string(" = ")
-        serialize_value(value, sb, indent)
-        sb.write_string("\n")
-      }
+
+      // Closing boundary
+      sb.write_string("--")
+      sb.write_string(bd)
+      sb.write_string("--\r\n")
     }
   }
 }
 
-/// Quote a key if it contains special characters.
-fn quote_key(key : String) -> String {
-  let len = key.length()
-  let mut needs_quote = false
+/// Find the boundary parameter from MIME headers.
+fn find_boundary(headers : Array[Header]) -> String? {
+  for h in headers {
+    if h.name.to_lower() == "content-type" {
+      let ct = parse_content_type(h.value)
+      match ct {
+        Some(c) => {
+          for i = 0; i < c.params.length(); i = i + 1 {
+            let (k, v) = c.params[i]
+            if k == "boundary" {
+              return Some(v)
+            }
+          }
+          return None
+        }
+        None => ()
+      }
+    }
+  }
+  None
+}
+
+/// Simple base64 encoder for Bytes.
+fn base64_encode(data : Bytes) -> String {
+  let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  let result = StringBuilder::new()
+  let len = data.length()
   let mut i = 0
   while i < len {
-    let c = key.unsafe_char_at(i)
-    if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-         (c >= '0' && c <= '9') || c == '_' || c == '-') {
-      needs_quote = true
-      break
-    }
-    i = i + 1
+    let b1 = data[i].to_int() & 0xFF
+    let b2 = if i + 1 < len { data[i + 1].to_int() & 0xFF } else { 0 }
+    let b3 = if i + 2 < len { data[i + 2].to_int() & 0xFF } else { 0 }
+
+    let c1 = (b1 >> 2) & 0x3F
+    let c2 = ((b1 << 4) | (b2 >> 4)) & 0x3F
+    let c3 = if i + 1 < len { ((b2 << 2) | (b3 >> 6)) & 0x3F } else { 64 }
+    let c4 = if i + 2 < len { b3 & 0x3F } else { 64 }
+
+    result.write_char(table.get_char(c1).unwrap())
+    result.write_char(table.get_char(c2).unwrap())
+    result.write_char(if i + 1 < len { table.get_char(c3).unwrap() } else { '=' })
+    result.write_char(if i + 2 < len { table.get_char(c4).unwrap() } else { '=' })
+
+    i = i + 3
   }
-  if needs_quote {
-    "\"" + key + "\""
+  result.to_string()
+}
+
+
+/// Serialize an EmailAddress to string.
+pub fn address_to_string(addr : EmailAddress) -> String {
+  let local_part = addr.local_part
+  // Check if local part needs quoting
+  let needs_quote = local_part.contains("@") || local_part.contains(" ") || local_part.contains("<") ||
+                    local_part.contains(">") || local_part.contains(",") || local_part.contains(";") ||
+                    local_part.contains(":") || local_part.contains("\\") || local_part.contains("\"") ||
+                    local_part.contains("(") || local_part.contains(")") || local_part.contains("[") ||
+                    local_part.contains("]")
+
+  let local_str = if needs_quote {
+    "\"" + local_part + "\""
   } else {
-    key
+    local_part
   }
-}
 
-/// Serialize a TOML value to its text representation.
-fn serialize_value(
-  value : TomlValue,
-  sb : StringBuilder,
-  indent : Int,
-) -> Unit {
-  match value {
-    Str(s) => {
-      sb.write_string("\"")
-      sb.write_string(escape_toml_string(s))
-      sb.write_string("\"")
-    }
-    Integer(i) => sb.write_string(i.to_string())
-    Float(f) => sb.write_string(f.to_string())
-    Bool(b) => {
-      if b {
-        sb.write_string("true")
-      } else {
-        sb.write_string("false")
-      }
-    }
-    Array(items) => {
-      sb.write_string("[")
-      let mut i = 0
-      while i < items.length() {
-        if i > 0 {
-          sb.write_string(", ")
-        }
-        serialize_value(items[i], sb, indent)
-        i = i + 1
-      }
-      sb.write_string("]")
-    }
-    Table(_) => {
-      sb.write_string("{")
-      // Inline table serialization
-      let entries = match value {
-        Table(e) => e
-        _ => []
-      }
-      let mut i = 0
-      while i < entries.length() {
-        if i > 0 {
-          sb.write_string(", ")
-        }
-        let (k, v) = entries[i]
-        sb.write_string(quote_key(k))
-        sb.write_string(" = ")
-        serialize_value(v, sb, indent)
-        i = i + 1
-      }
-      sb.write_string("}")
-    }
-  }
+  local_str + "@" + addr.domain
 }

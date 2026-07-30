@@ -1,28 +1,70 @@
-/// mbt-toml - TOML parser and serializer demonstration.
+/// CLI demo for mbt-email: parse and display email messages.
 fn main {
-  let input = StringBuilder::new()
-  input.write_string("# mbt-toml demo configuration\n")
-  input.write_string("name = \"mbt-toml\"\n")
-  input.write_string("version = \"0.1.0\"\n")
-  input.write_string("license = \"MIT\"\n\n")
-  input.write_string("[author]\n")
-  input.write_string("name = \"Mr-Houjie\"\n")
-  input.write_string("email = \"dev@example.com\"\n\n")
-  input.write_string("[dependencies]\n")
-  input.write_string("moonbit = \">= 0.1.0\"\n\n")
-  input.write_string("[[contributors]]\n")
-  input.write_string("name = \"Contributor A\"\n")
-  input.write_string("role = \"reviewer\"\n\n")
-  input.write_string("tags = [\"toml\", \"parser\", \"config\"]\n")
-  input.write_string("active = true\n")
-  let toml_str = input.to_string()
+  // Use a simple demo email when no arguments are provided
+  let input = "From: alice@example.com\r\nTo: bob@example.com\r\nSubject: Hello\r\n\r\nHello, world!\r\n"
 
-  println("=== Input TOML ===")
-  println(toml_str)
+  // Parse the email
+  let msg = @lib.parse(input)
 
-  let doc = @lib.parse(toml_str)
+  // Display headers
+  println("=== Headers ===")
+  for h in msg.headers {
+    println(h.name + ": " + h.value)
+  }
 
-  println("=== Serialized TOML ===")
-  let output = @lib.to_toml(doc)
+  // Display parsed addresses
+  let from_val = @lib.get_header(msg, "From")
+  match from_val {
+    Some(v) => {
+      let addrs = @lib.parse_address_list(v)
+      if addrs.length() > 0 {
+        println("")
+        println("=== Parsed From Addresses ===")
+        for a in addrs {
+          println(@lib.address_to_string(a) + " (local=" + a.local_part + ", domain=" + a.domain + ")")
+        }
+      }
+    }
+    None => ()
+  }
+
+  let to_val = @lib.get_header(msg, "To")
+  match to_val {
+    Some(v) => {
+      let addrs = @lib.parse_address_list(v)
+      if addrs.length() > 0 {
+        println("")
+        println("=== Parsed To Addresses ===")
+        for a in addrs {
+          println(@lib.address_to_string(a))
+        }
+      }
+    }
+    None => ()
+  }
+
+  // Display body
+  match msg.body {
+    Some(b) => {
+      println("")
+      println("=== Body ===")
+      println(b)
+    }
+    None => ()
+  }
+
+  // Display MIME info if present
+  match msg.mime_part {
+    Some(_) => {
+      println("")
+      println("=== MIME Structure Detected ===")
+    }
+    None => ()
+  }
+
+  // Round-trip test
+  println("")
+  println("=== Round-trip Output ===")
+  let output = @lib.to_string(msg)
   println(output)
 }
