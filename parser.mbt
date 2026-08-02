@@ -3,6 +3,7 @@
 /// Parses RFC 5322 message format using a simple line-by-line approach.
 /// Handles headers, body, MIME content types, and email addresses.
 
+///|
 /// Parse a full email message from raw text.
 /// Splits headers from body at the first blank line.
 pub fn parse_message(input : String) -> Message {
@@ -22,10 +23,11 @@ pub fn parse_message(input : String) -> Message {
     // Check for CRLF or LF
     let nl_pos = match rest.find("\r\n") {
       Some(p) => p
-      None => match rest.find("\n") {
-        Some(p) => p
-        None => len - i  // no newline, read to end
-      }
+      None =>
+        match rest.find("\n") {
+          Some(p) => p
+          None => len - i // no newline, read to end
+        }
     }
 
     let line = if nl_pos > 0 {
@@ -34,7 +36,8 @@ pub fn parse_message(input : String) -> Message {
       ""
     }
 
-    let nl_len = if i + nl_pos + 2 <= len && rest.unsafe_substring(start=nl_pos, end=nl_pos + 2) == "\r\n" {
+    let nl_len = if i + nl_pos + 2 <= len &&
+      rest.unsafe_substring(start=nl_pos, end=nl_pos + 2) == "\r\n" {
       2
     } else if i + nl_pos < len && rest.get_char(nl_pos).unwrap() == '\n' {
       1
@@ -67,7 +70,10 @@ pub fn parse_message(input : String) -> Message {
       }
       if !in_fold {
         // End of folded header
-        headers.push(Header::{ name: current_name, value: current_value.to_string() })
+        headers.push(Header::{
+          name: current_name,
+          value: current_value.to_string(),
+        })
         current_name = ""
         current_value = StringBuilder::new()
       }
@@ -83,10 +89,16 @@ pub fn parse_message(input : String) -> Message {
         continue
       }
       Some(cp) => {
-        let name = line.unsafe_substring(start=0, end=cp).trim_end(chars=" \t").to_owned()
+        let name = line
+          .unsafe_substring(start=0, end=cp)
+          .trim_end(chars=" \t")
+          .to_owned()
         let value_start = cp + 1
         let value = if value_start < line.length() {
-          line.unsafe_substring(start=value_start, end=line.length()).trim(chars=" \t").to_owned()
+          line
+          .unsafe_substring(start=value_start, end=line.length())
+          .trim(chars=" \t")
+          .to_owned()
         } else {
           ""
         }
@@ -104,7 +116,10 @@ pub fn parse_message(input : String) -> Message {
           in_fold = false
         }
         if !in_fold {
-          headers.push(Header::{ name: current_name, value: current_value.to_string() })
+          headers.push(Header::{
+            name: current_name,
+            value: current_value.to_string(),
+          })
           current_name = ""
           current_value = StringBuilder::new()
         }
@@ -114,7 +129,10 @@ pub fn parse_message(input : String) -> Message {
 
   // Store any pending header
   if current_name.length() > 0 {
-    headers.push(Header::{ name: current_name, value: current_value.to_string() })
+    headers.push(Header::{
+      name: current_name,
+      value: current_value.to_string(),
+    })
   }
 
   // Parse body
@@ -132,8 +150,8 @@ pub fn parse_message(input : String) -> Message {
   Message::{ headers, body, mime_part: None }
 }
 
-
-///| Parse a single email address from a string.
+///|
+/// Parse a single email address from a string.
 /// Supports: user@domain, <user@domain>, "Name" <user@domain>
 pub fn parse_address(input : String) -> EmailAddress? {
   let trimmed = input.trim(chars=" \t\r\n").to_owned()
@@ -150,9 +168,8 @@ pub fn parse_address(input : String) -> EmailAddress? {
   } else if trimmed.contains("<") && trimmed.has_suffix(">") {
     let start = trimmed.find("<")
     match start {
-      Some(pos) => {
+      Some(pos) =>
         trimmed.unsafe_substring(start=pos + 1, end=trimmed.length() - 1)
-      }
       None => return None
     }
   } else {
@@ -164,7 +181,10 @@ pub fn parse_address(input : String) -> EmailAddress? {
     None => None
     Some(pos) => {
       let lp = addr_part.unsafe_substring(start=0, end=pos)
-      let domain = addr_part.unsafe_substring(start=pos + 1, end=addr_part.length())
+      let domain = addr_part.unsafe_substring(
+        start=pos + 1,
+        end=addr_part.length(),
+      )
       let clean_local = if lp.has_prefix("\"") && lp.has_suffix("\"") {
         lp.unsafe_substring(start=1, end=lp.length() - 1)
       } else {
@@ -179,7 +199,8 @@ pub fn parse_address(input : String) -> EmailAddress? {
   }
 }
 
-///| Parse multiple email addresses from a header value.
+///|
+/// Parse multiple email addresses from a header value.
 pub fn parse_address_list(input : String) -> Array[EmailAddress] {
   let results : Array[EmailAddress] = []
   let trimmed = input.trim(chars=" \t\r\n").to_owned()
@@ -198,6 +219,7 @@ pub fn parse_address_list(input : String) -> Array[EmailAddress] {
   results
 }
 
+///|
 /// Split address list by commas, respecting quotes and angle brackets.
 fn split_addr_list(input : String) -> Array[String] {
   let results : Array[String] = []
@@ -215,7 +237,10 @@ fn split_addr_list(input : String) -> Array[String] {
     } else if c == '>' && !in_quote {
       in_angle = false
     } else if c == ',' && !in_quote && !in_angle {
-      let part = input.unsafe_substring(start=start, end=i).trim(chars=" \t\r\n").to_owned()
+      let part = input
+        .unsafe_substring(start~, end=i)
+        .trim(chars=" \t\r\n")
+        .to_owned()
       if part.length() > 0 {
         results.push(part)
       }
@@ -224,14 +249,18 @@ fn split_addr_list(input : String) -> Array[String] {
     i = i + 1
   }
 
-  let last = input.unsafe_substring(start=start, end=input.length()).trim(chars=" \t\r\n").to_owned()
+  let last = input
+    .unsafe_substring(start~, end=input.length())
+    .trim(chars=" \t\r\n")
+    .to_owned()
   if last.length() > 0 {
     results.push(last)
   }
   results
 }
 
-///| Parse a MIME Content-Type header value.
+///|
+/// Parse a MIME Content-Type header value.
 pub fn parse_content_type(value : String) -> ContentType? {
   let trimmed = value.trim(chars=" \t").to_owned()
   if trimmed.length() == 0 {
@@ -247,10 +276,13 @@ pub fn parse_content_type(value : String) -> ContentType? {
   let slash_pos = type_sub.find("/")
   let (media_type, sub_type) = match slash_pos {
     None => (type_sub.to_lower(), "")
-    Some(pos_slash) => {
-      (type_sub.unsafe_substring(start=0, end=pos_slash).to_lower(),
-       type_sub.unsafe_substring(start=pos_slash + 1, end=type_sub.length()).to_lower())
-    }
+    Some(pos_slash) =>
+      (
+        type_sub.unsafe_substring(start=0, end=pos_slash).to_lower(),
+        type_sub
+        .unsafe_substring(start=pos_slash + 1, end=type_sub.length())
+        .to_lower(),
+      )
   }
 
   let params : Array[(String, String)] = []
@@ -261,8 +293,15 @@ pub fn parse_content_type(value : String) -> ContentType? {
     match eq_pos {
       None => ()
       Some(pos_eq) => {
-        let key = param.unsafe_substring(start=0, end=pos_eq).trim(chars=" \t").to_lower().to_owned()
-        let val_raw = param.unsafe_substring(start=pos_eq + 1, end=param.length()).trim(chars=" \t").to_owned()
+        let key = param
+          .unsafe_substring(start=0, end=pos_eq)
+          .trim(chars=" \t")
+          .to_lower()
+          .to_owned()
+        let val_raw = param
+          .unsafe_substring(start=pos_eq + 1, end=param.length())
+          .trim(chars=" \t")
+          .to_owned()
         let val = if val_raw.has_prefix("\"") && val_raw.has_suffix("\"") {
           val_raw.unsafe_substring(start=1, end=val_raw.length() - 1)
         } else {
@@ -277,7 +316,8 @@ pub fn parse_content_type(value : String) -> ContentType? {
   Some(ContentType::{ media_type, sub_type, params })
 }
 
-///| Parse a MIME Content-Disposition header value.
+///|
+/// Parse a MIME Content-Disposition header value.
 pub fn parse_content_disposition(value : String) -> ContentDisposition? {
   let trimmed = value.trim(chars=" \t").to_owned()
   if trimmed.length() == 0 {
@@ -298,8 +338,15 @@ pub fn parse_content_disposition(value : String) -> ContentDisposition? {
     match eq_pos {
       None => ()
       Some(pos_eq) => {
-        let key = param.unsafe_substring(start=0, end=pos_eq).trim(chars=" \t").to_lower().to_owned()
-        let val_raw = param.unsafe_substring(start=pos_eq + 1, end=param.length()).trim(chars=" \t").to_owned()
+        let key = param
+          .unsafe_substring(start=0, end=pos_eq)
+          .trim(chars=" \t")
+          .to_lower()
+          .to_owned()
+        let val_raw = param
+          .unsafe_substring(start=pos_eq + 1, end=param.length())
+          .trim(chars=" \t")
+          .to_owned()
         let val = if val_raw.has_prefix("\"") && val_raw.has_suffix("\"") {
           val_raw.unsafe_substring(start=1, end=val_raw.length() - 1)
         } else {
@@ -314,6 +361,7 @@ pub fn parse_content_disposition(value : String) -> ContentDisposition? {
   Some(ContentDisposition::{ disposition, params })
 }
 
+///|
 /// Split a string by semicolons, respecting quotes.
 fn split_semi(input : String) -> Array[String] {
   let parts : Array[String] = []
@@ -325,21 +373,27 @@ fn split_semi(input : String) -> Array[String] {
     if c == '"' {
       in_quote = !in_quote
     } else if c == ';' && !in_quote {
-      let part = input.unsafe_substring(start=start, end=i).trim(chars=" \t").to_owned()
+      let part = input
+        .unsafe_substring(start~, end=i)
+        .trim(chars=" \t")
+        .to_owned()
       parts.push(part)
       start = i + 1
     }
     i = i + 1
   }
-  let last = input.unsafe_substring(start=start, end=input.length()).trim(chars=" \t").to_owned()
+  let last = input
+    .unsafe_substring(start~, end=input.length())
+    .trim(chars=" \t")
+    .to_owned()
   if last.length() > 0 {
     parts.push(last)
   }
   parts
 }
 
-
-///| Decode an RFC 2047 encoded-word.
+///|
+/// Decode an RFC 2047 encoded-word.
 /// Format: =?charset?encoding?encoded_text?=
 pub fn decode_encoded_word(input : String) -> String? {
   let s = input.trim(chars=" \t").to_owned()
@@ -352,13 +406,21 @@ pub fn decode_encoded_word(input : String) -> String? {
   match q1 {
     None => None
     Some(p1) => {
-      let after_charset = inner.unsafe_substring(start=p1 + 1, end=inner.length())
+      let after_charset = inner.unsafe_substring(
+        start=p1 + 1,
+        end=inner.length(),
+      )
       let q2 = after_charset.find("?")
       match q2 {
         None => None
         Some(p2) => {
-          let encoding = after_charset.unsafe_substring(start=0, end=p2).to_upper()
-          let encoded = after_charset.unsafe_substring(start=p2 + 1, end=after_charset.length())
+          let encoding = after_charset
+            .unsafe_substring(start=0, end=p2)
+            .to_upper()
+          let encoded = after_charset.unsafe_substring(
+            start=p2 + 1,
+            end=after_charset.length(),
+          )
           match encoding {
             "B" => decode_b64_word(encoded)
             "Q" => decode_q_word(encoded)
@@ -370,6 +432,7 @@ pub fn decode_encoded_word(input : String) -> String? {
   }
 }
 
+///|
 fn decode_b64_word(input : String) -> String? {
   let decoded = base64_decode(input)
   match decoded {
@@ -378,6 +441,7 @@ fn decode_b64_word(input : String) -> String? {
   }
 }
 
+///|
 fn decode_q_word(input : String) -> String? {
   let result = StringBuilder::new()
   let len = input.length()
@@ -405,12 +469,18 @@ fn decode_q_word(input : String) -> String? {
   Some(result.to_string())
 }
 
+///|
 fn hex_byte(h1 : Char, h2 : Char) -> Int? {
   fn hex_val(c : Char) -> Int? {
-    if c >= '0' && c <= '9' { Some(c.to_int() - '0'.to_int()) } else
-    if c >= 'A' && c <= 'F' { Some(c.to_int() - 'A'.to_int() + 10) } else
-    if c >= 'a' && c <= 'f' { Some(c.to_int() - 'a'.to_int() + 10) } else
-    { None }
+    if c >= '0' && c <= '9' {
+      Some(c.to_int() - '0'.to_int())
+    } else if c >= 'A' && c <= 'F' {
+      Some(c.to_int() - 'A'.to_int() + 10)
+    } else if c >= 'a' && c <= 'f' {
+      Some(c.to_int() - 'a'.to_int() + 10)
+    } else {
+      None
+    }
   }
   match (hex_val(h1), hex_val(h2)) {
     (Some(hi), Some(lo)) => Some(hi * 16 + lo)
@@ -418,6 +488,7 @@ fn hex_byte(h1 : Char, h2 : Char) -> Int? {
   }
 }
 
+///|
 fn base64_decode(input : String) -> String? {
   let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
   let len = input.length()
@@ -457,6 +528,7 @@ fn base64_decode(input : String) -> String? {
   Some(result.to_string())
 }
 
+///|
 fn b64_index(table : String, c : Char) -> Int? {
   let mut i = 0
   while i < table.length() {

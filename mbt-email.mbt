@@ -17,11 +17,19 @@
 ///   - Content-Type and Content-Disposition parameter parsing
 ///   - Round-trip parse → serialize
 
+///|
 /// Parse a raw email string into a Message AST.
 pub fn parse(input : String) -> Message {
   parse_message(input)
 }
 
+///|
+/// Parse a MIME message with full multipart support.
+pub fn parse_mime(input : String) -> Message {
+  parse_mime_message(input)
+}
+
+///|
 /// Serialize a Message back to RFC 5322 format text.
 pub fn to_string(msg : Message) -> String {
   message_to_string(msg)

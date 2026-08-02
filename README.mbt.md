@@ -15,20 +15,25 @@ An RFC 5322/2045 email address and MIME message parser written in pure MoonBit.
 
 ### As a library
 
-```moonbit
+```moonbit nocheck
 // Parse an email message
+///|
 let msg = @houjie/mbt-email.parse(
   "From: alice@example.com\r\n" +
   "To: bob@example.com\r\n" +
   "Subject: Hello\r\n" +
   "\r\n" +
-  "Hello, world!\r\n"
+  "Hello, world!\r\n",
 )
 
 // Access headers
+
+///|
 let from = @houjie/mbt-email.get_header(msg, "From")
 
 // Serialize back to text
+
+///|
 let text = @houjie/mbt-email.to_string(msg)
 ```
 

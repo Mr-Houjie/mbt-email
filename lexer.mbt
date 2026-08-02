@@ -3,6 +3,7 @@
 /// Handles RFC 5322 message format tokens including header names,
 /// quoted strings, domain literals, atoms, and special characters.
 
+///|
 /// Token types for email/MIME lexing.
 pub enum Token {
   /// A header field name (e.g., "From", "To", "Subject").
@@ -49,6 +50,7 @@ pub enum Token {
   Boundary(String)
 }
 
+///|
 /// The lexer state.
 struct Lexer {
   input : String
@@ -56,10 +58,12 @@ struct Lexer {
   len : Int
 }
 
+///|
 fn Lexer::new(input : String) -> Lexer {
   Lexer::{ input, pos: 0, len: input.length() }
 }
 
+///|
 /// Peek at current character without consuming.
 fn peek(l : Lexer) -> Char? {
   if l.pos < l.len {
@@ -69,6 +73,7 @@ fn peek(l : Lexer) -> Char? {
   }
 }
 
+///|
 /// Peek at character at offset from current position.
 fn peek_at(l : Lexer, offset : Int) -> Char? {
   let idx = l.pos + offset
@@ -79,45 +84,69 @@ fn peek_at(l : Lexer, offset : Int) -> Char? {
   }
 }
 
+///|
 /// Advance and return current character.
 fn advance(l : Lexer) -> Lexer {
   Lexer::{ input: l.input, pos: l.pos + 1, len: l.len }
 }
 
+///|
 /// Advance by n characters.
 fn advance_n(l : Lexer, n : Int) -> Lexer {
   Lexer::{ input: l.input, pos: l.pos + n, len: l.len }
 }
 
+///|
 /// Check if character is whitespace (space or tab).
 fn is_wsp(c : Char) -> Bool {
   c == ' ' || c == '\t'
 }
 
+///|
 /// Check if character is a letter (a-z, A-Z).
 fn is_alpha(c : Char) -> Bool {
   (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
+///|
 /// Check if character is a digit (0-9).
 fn is_digit(c : Char) -> Bool {
   c >= '0' && c <= '9'
 }
 
+///|
 /// Check if character is valid in an atom.
 fn is_atext(c : Char) -> Bool {
-  is_alpha(c) || is_digit(c) ||
-  c == '!' || c == '#' || c == '$' || c == '%' || c == '&' ||
-  c == '\'' || c == '*' || c == '+' || c == '-' || c == '/' ||
-  c == '=' || c == '?' || c == '^' || c == '_' || c == '`' ||
-  c == '{' || c == '|' || c == '}' || c == '~'
+  is_alpha(c) ||
+  is_digit(c) ||
+  c == '!' ||
+  c == '#' ||
+  c == '$' ||
+  c == '%' ||
+  c == '&' ||
+  c == '\'' ||
+  c == '*' ||
+  c == '+' ||
+  c == '-' ||
+  c == '/' ||
+  c == '=' ||
+  c == '?' ||
+  c == '^' ||
+  c == '_' ||
+  c == '`' ||
+  c == '{' ||
+  c == '|' ||
+  c == '}' ||
+  c == '~'
 }
 
+///|
 /// Check if character is valid in a header name.
 fn is_header_name_char(c : Char) -> Bool {
   is_alpha(c) || is_digit(c) || c == '-'
 }
 
+///|
 /// Check for CR (carriage return).
 fn is_cr(l : Lexer) -> Bool {
   match peek(l) {
@@ -126,6 +155,7 @@ fn is_cr(l : Lexer) -> Bool {
   }
 }
 
+///|
 /// Check for LF (line feed).
 fn is_lf(l : Lexer) -> Bool {
   match peek(l) {
@@ -134,6 +164,7 @@ fn is_lf(l : Lexer) -> Bool {
   }
 }
 
+///|
 /// Skip a CRLF or LF newline sequence. Returns new lexer position.
 fn skip_newline(l : Lexer) -> Lexer {
   let mut cur = l
@@ -142,16 +173,15 @@ fn skip_newline(l : Lexer) -> Lexer {
     _ => ()
   }
   match peek(cur) {
-    Some('\n') => {
-      cur = advance(cur)
-      // Detect boundary lines: check if the next line starts with "--"
-      // Boundary detection is done at the caller level
-    }
+    Some('\n') => cur = advance(cur)
+    // Detect boundary lines: check if the next line starts with "--"
+    // Boundary detection is done at the caller level
     _ => ()
   }
   cur
 }
 
+///|
 /// Skip whitespace (space and tab).
 fn skip_wsp(l : Lexer) -> Lexer {
   let mut cur = l
@@ -164,6 +194,7 @@ fn skip_wsp(l : Lexer) -> Lexer {
   cur
 }
 
+///|
 /// Read an atom (sequence of atext characters).
 fn read_atom(l : Lexer) -> (String, Lexer) {
   let start = l.pos
@@ -174,10 +205,11 @@ fn read_atom(l : Lexer) -> (String, Lexer) {
       _ => break
     }
   }
-  let value = l.input.unsafe_substring(start=start, end=cur.pos)
+  let value = l.input.unsafe_substring(start~, end=cur.pos)
   (value, cur)
 }
 
+///|
 /// Read a header name (sequence of alphanumeric or hyphen).
 fn read_header_name(l : Lexer) -> (String, Lexer) {
   let start = l.pos
@@ -188,17 +220,18 @@ fn read_header_name(l : Lexer) -> (String, Lexer) {
       _ => break
     }
   }
-  (l.input.unsafe_substring(start=start, end=cur.pos), cur)
+  (l.input.unsafe_substring(start~, end=cur.pos), cur)
 }
 
+///|
 /// Read a quoted string (including the surrounding double quotes).
 /// Returns the full string including quotes.
 fn read_quoted_string(l : Lexer) -> (String, Lexer) {
   let mut cur = advance(l) // skip opening quote
-  let start = l.pos  // start after opening quote
+  let start = l.pos // start after opening quote
   while true {
     match peek(cur) {
-      None => break  // unterminated, return what we have
+      None => break // unterminated, return what we have
       Some('\\') => {
         cur = advance(cur) // skip backslash
         match peek(cur) {
@@ -217,6 +250,7 @@ fn read_quoted_string(l : Lexer) -> (String, Lexer) {
   (l.input.unsafe_substring(start=l.pos, end=cur.pos), cur)
 }
 
+///|
 /// Read a domain literal (e.g., [127.0.0.1] or [IPv6:...]).
 fn read_domain_literal(l : Lexer) -> (String, Lexer) {
   let mut cur = advance(l) // skip [
@@ -225,20 +259,34 @@ fn read_domain_literal(l : Lexer) -> (String, Lexer) {
   while depth > 0 {
     match peek(cur) {
       None => break
-      Some('[') => { depth = depth + 1; cur = advance(cur) }
-      Some(']') => { depth = depth - 1; if depth > 0 { cur = advance(cur) } }
-      Some('\\') => { cur = advance(cur); match peek(cur) { Some(_) => cur = advance(cur); None => () } }
+      Some('[') => {
+        depth = depth + 1
+        cur = advance(cur)
+      }
+      Some(']') => {
+        depth = depth - 1
+        if depth > 0 {
+          cur = advance(cur)
+        }
+      }
+      Some('\\') => {
+        cur = advance(cur)
+        match peek(cur) {
+          Some(_) => cur = advance(cur)
+          None => ()
+        }
+      }
       Some(_) => cur = advance(cur)
     }
   }
-  let content = l.input.unsafe_substring(start=start, end=cur.pos)
+  let content = l.input.unsafe_substring(start~, end=cur.pos)
   if depth == 0 {
     cur = advance(cur) // skip closing ]
   }
   (content, cur)
 }
 
-
+///|
 /// Read a header field value, handling folding (continuation lines starting with WSP).
 /// Stops at CRLF that is NOT followed by WSP.
 /// Also detects MIME boundary lines (starting with "--").
@@ -277,6 +325,7 @@ fn read_header_value(l : Lexer) -> (String, Lexer) {
   (buf.to_string().trim_end(chars=" \t").to_string(), cur)
 }
 
+///|
 /// Read a boundary line: lines starting with "--".
 /// Returns the boundary string and whether it's a closing boundary.
 fn read_boundary(l : Lexer) -> (String, Bool, Lexer) {
@@ -306,7 +355,7 @@ fn read_boundary(l : Lexer) -> (String, Bool, Lexer) {
   (boundary, is_close, cur)
 }
 
-
+///|
 /// Tokenize the entire input into a sequence of tokens.
 /// This is the main entry point for the lexer.
 pub fn tokenize(input : String) -> Array[Token] {
@@ -325,12 +374,10 @@ pub fn tokenize(input : String) -> Array[Token] {
       }
 
       // Whitespace (only significant at certain positions; mostly skip)
-      Some(c) if is_wsp(c) => {
-        cur = skip_wsp(cur)
-      }
+      Some(c) if is_wsp(c) => cur = skip_wsp(cur)
 
       // Boundary line detection: line starting with "--"
-      Some('-') => {
+      Some('-') =>
         match peek_at(cur, 1) {
           Some('-') => {
             let (boundary, is_close, after) = read_boundary(cur)
@@ -349,7 +396,6 @@ pub fn tokenize(input : String) -> Array[Token] {
             cur = after
           }
         }
-      }
 
       // Header name detection: alpha char at start of line or after newline
       // We detect header names by checking if we're at the start of a line
@@ -378,22 +424,55 @@ pub fn tokenize(input : String) -> Array[Token] {
       }
 
       // Special characters
-      Some('@') => { tokens.push(AtSign); cur = advance(cur) }
-      Some('.') => { tokens.push(Dot); cur = advance(cur) }
-      Some(',') => { tokens.push(Comma); cur = advance(cur) }
-      Some(';') => { tokens.push(Semicolon); cur = advance(cur) }
-      Some('=') => { tokens.push(Equals); cur = advance(cur) }
-      Some('<') => { tokens.push(LAngle); cur = advance(cur) }
-      Some('>') => { tokens.push(RAngle); cur = advance(cur) }
+      Some('@') => {
+        tokens.push(AtSign)
+        cur = advance(cur)
+      }
+      Some('.') => {
+        tokens.push(Dot)
+        cur = advance(cur)
+      }
+      Some(',') => {
+        tokens.push(Comma)
+        cur = advance(cur)
+      }
+      Some(';') => {
+        tokens.push(Semicolon)
+        cur = advance(cur)
+      }
+      Some('=') => {
+        tokens.push(Equals)
+        cur = advance(cur)
+      }
+      Some('<') => {
+        tokens.push(LAngle)
+        cur = advance(cur)
+      }
+      Some('>') => {
+        tokens.push(RAngle)
+        cur = advance(cur)
+      }
       Some('[') => {
         let (content, after) = read_domain_literal(cur)
         tokens.push(DomainLiteral(content))
         cur = after
       }
-      Some(']') => { tokens.push(RBracket); cur = advance(cur) }
-      Some('(') => { tokens.push(LParen); cur = advance(cur) }
-      Some(')') => { tokens.push(RParen); cur = advance(cur) }
-      Some('/') => { tokens.push(Slash); cur = advance(cur) }
+      Some(']') => {
+        tokens.push(RBracket)
+        cur = advance(cur)
+      }
+      Some('(') => {
+        tokens.push(LParen)
+        cur = advance(cur)
+      }
+      Some(')') => {
+        tokens.push(RParen)
+        cur = advance(cur)
+      }
+      Some('/') => {
+        tokens.push(Slash)
+        cur = advance(cur)
+      }
 
       // Quoted string
       Some('"') => {
@@ -410,9 +489,7 @@ pub fn tokenize(input : String) -> Array[Token] {
       }
 
       // Skip unknown characters
-      Some(_) => {
-        cur = advance(cur)
-      }
+      Some(_) => cur = advance(cur)
     }
   }
 

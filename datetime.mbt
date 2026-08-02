@@ -10,6 +10,7 @@
 /// This module parses such values into the structured EmailDate type
 /// and provides validation helpers.
 
+///|
 /// Parse an RFC 5322 date-time string into an EmailDate.
 ///
 /// Accepts formats such as:
@@ -71,7 +72,7 @@ pub fn parse_email_date(input : String) -> EmailDate? {
                   }
                   match tz {
                     None => None
-                    Some((tz_h, tz_m, tz_sign)) => {
+                    Some((tz_h, tz_m, tz_sign)) =>
                       Some(EmailDate::{
                         year: y,
                         month: m,
@@ -83,7 +84,6 @@ pub fn parse_email_date(input : String) -> EmailDate? {
                         tz_minute: tz_m,
                         tz_sign,
                       })
-                    }
                   }
                 }
               }
@@ -96,6 +96,7 @@ pub fn parse_email_date(input : String) -> EmailDate? {
   }
 }
 
+///|
 /// Split a string into whitespace-separated tokens.
 fn tokenize_ws(input : String) -> Array[String] {
   let tokens : Array[String] = []
@@ -126,6 +127,7 @@ fn tokenize_ws(input : String) -> Array[String] {
   tokens
 }
 
+///|
 /// Parse a decimal integer from a string.
 fn parse_int(s : String) -> Int? {
   if s.length() == 0 {
@@ -145,9 +147,14 @@ fn parse_int(s : String) -> Int? {
     }
     i = i + 1
   }
-  if started { Some(result) } else { None }
+  if started {
+    Some(result)
+  } else {
+    None
+  }
 }
 
+///|
 /// Parse a year, handling two-digit and four-digit forms.
 fn parse_year(s : String) -> Int? {
   let len = s.length()
@@ -155,7 +162,7 @@ fn parse_year(s : String) -> Int? {
     let y = parse_int(s)
     match y {
       None => None
-      Some(v) => {
+      Some(v) =>
         // RFC 5322: two-digit years 00-49 map to 2000-2049,
         // 50-99 map to 1950-1999.
         if v >= 50 {
@@ -163,7 +170,6 @@ fn parse_year(s : String) -> Int? {
         } else {
           Some(2000 + v)
         }
-      }
     }
   } else if len == 4 {
     parse_int(s)
@@ -172,6 +178,7 @@ fn parse_year(s : String) -> Int? {
   }
 }
 
+///|
 /// Parse a time of day "HH:MM[:SS]".
 fn parse_time(s : String) -> (Int, Int, Int)? {
   let parts = split_char(s, ':')
@@ -180,23 +187,19 @@ fn parse_time(s : String) -> (Int, Int, Int)? {
   }
   let hour = parse_int(parts[0])
   let minute = parse_int(parts[1])
-  let second = if parts.length() >= 3 {
-    parse_int(parts[2])
-  } else {
-    Some(0)
-  }
+  let second = if parts.length() >= 3 { parse_int(parts[2]) } else { Some(0) }
   match (hour, minute, second) {
-    (Some(h), Some(m), Some(sec)) => {
+    (Some(h), Some(m), Some(sec)) =>
       if h >= 0 && h <= 23 && m >= 0 && m <= 59 && sec >= 0 && sec <= 60 {
         Some((h, m, sec))
       } else {
         None
       }
-    }
     _ => None
   }
 }
 
+///|
 /// Split a string by a delimiter character into an array of strings.
 fn split_char(s : String, delim : Char) -> Array[String] {
   let parts : Array[String] = []
@@ -213,24 +216,40 @@ fn split_char(s : String, delim : Char) -> Array[String] {
   parts
 }
 
+///|
 /// Map a three-letter month abbreviation to its number (1-12).
 fn month_name_to_num(s : String) -> Int? {
   let lower = s.to_lower()
-  if lower == "jan" { Some(1) }
-  else if lower == "feb" { Some(2) }
-  else if lower == "mar" { Some(3) }
-  else if lower == "apr" { Some(4) }
-  else if lower == "may" { Some(5) }
-  else if lower == "jun" { Some(6) }
-  else if lower == "jul" { Some(7) }
-  else if lower == "aug" { Some(8) }
-  else if lower == "sep" { Some(9) }
-  else if lower == "oct" { Some(10) }
-  else if lower == "nov" { Some(11) }
-  else if lower == "dec" { Some(12) }
-  else { None }
+  if lower == "jan" {
+    Some(1)
+  } else if lower == "feb" {
+    Some(2)
+  } else if lower == "mar" {
+    Some(3)
+  } else if lower == "apr" {
+    Some(4)
+  } else if lower == "may" {
+    Some(5)
+  } else if lower == "jun" {
+    Some(6)
+  } else if lower == "jul" {
+    Some(7)
+  } else if lower == "aug" {
+    Some(8)
+  } else if lower == "sep" {
+    Some(9)
+  } else if lower == "oct" {
+    Some(10)
+  } else if lower == "nov" {
+    Some(11)
+  } else if lower == "dec" {
+    Some(12)
+  } else {
+    None
+  }
 }
 
+///|
 /// Parse a timezone token into (hour, minute, sign).
 /// Supports numeric offsets (+0800, -0500, +05:30) and named zones.
 fn parse_timezone(s : String) -> (Int, Int, Int)? {
@@ -258,20 +277,25 @@ fn parse_timezone(s : String) -> (Int, Int, Int)? {
     return None
   }
   let sign_char = s.get_char(0).unwrap()
-  let sign = if sign_char == '-' { -1 } else if sign_char == '+' { 1 } else { return None }
+  let sign = if sign_char == '-' {
+    -1
+  } else if sign_char == '+' {
+    1
+  } else {
+    return None
+  }
   let rest = s.unsafe_substring(start=1, end=s.length())
 
   if rest.length() == 4 {
     let hh = parse_int(rest.unsafe_substring(start=0, end=2))
     let mm = parse_int(rest.unsafe_substring(start=2, end=4))
     match (hh, mm) {
-      (Some(h), Some(m)) => {
+      (Some(h), Some(m)) =>
         if h <= 23 && m <= 59 {
           Some((h, m, sign))
         } else {
           None
         }
-      }
       _ => None
     }
   } else if rest.contains(":") {
@@ -280,13 +304,12 @@ fn parse_timezone(s : String) -> (Int, Int, Int)? {
       let hh = parse_int(parts[0])
       let mm = parse_int(parts[1])
       match (hh, mm) {
-        (Some(h), Some(m)) => {
+        (Some(h), Some(m)) =>
           if h <= 23 && m <= 59 {
             Some((h, m, sign))
           } else {
             None
           }
-        }
         _ => None
       }
     } else {
@@ -297,6 +320,7 @@ fn parse_timezone(s : String) -> (Int, Int, Int)? {
   }
 }
 
+///|
 /// Validate a parsed EmailDate: checks ranges and month/day consistency.
 pub fn validate_date(d : EmailDate) -> Bool {
   if d.month < 1 || d.month > 12 {
@@ -320,28 +344,30 @@ pub fn validate_date(d : EmailDate) -> Bool {
   true
 }
 
+///|
 /// Get the number of days in a given month, accounting for leap years.
 pub fn days_in_month(year : Int, month : Int) -> Int {
   match month {
     1 | 3 | 5 | 7 | 8 | 10 | 12 => 31
     4 | 6 | 9 | 11 => 30
-    2 => {
-      if is_leap_year(year) { 29 } else { 28 }
-    }
+    2 => if is_leap_year(year) { 29 } else { 28 }
     _ => 0
   }
 }
 
+///|
 /// Check whether a year is a leap year.
 pub fn is_leap_year(year : Int) -> Bool {
-  (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+  (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }
 
+///|
 /// Get the numeric timezone offset of an EmailDate in minutes.
 pub fn tz_offset_minutes(d : EmailDate) -> Int {
   (d.tz_hour * 60 + d.tz_minute) * d.tz_sign
 }
 
+///|
 /// Convert an EmailDate to a Unix-like timestamp (seconds since epoch).
 /// Uses a simplified days-from-civil algorithm.
 pub fn to_timestamp(d : EmailDate) -> Int {
@@ -353,14 +379,20 @@ pub fn to_timestamp(d : EmailDate) -> Int {
   let doy = (153 * mp + 2) / 5 + d.day - 1
   let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
   let days = era * 146097 + doe - 719468
-  days * 86400 + d.hour * 3600 + d.minute * 60 + d.second - tz_offset_minutes(d) * 60
+  days * 86400 +
+  d.hour * 3600 +
+  d.minute * 60 +
+  d.second -
+  tz_offset_minutes(d) * 60
 }
 
+///|
 /// Parse a Date header value from a Message and return the EmailDate.
 pub fn parse_date_header(value : String) -> EmailDate? {
   parse_email_date(value)
 }
 
+///|
 /// Get the parsed Date from a Message, if present and valid.
 pub fn message_date(msg : Message) -> EmailDate? {
   let value = get_header(msg, "Date")
@@ -370,14 +402,22 @@ pub fn message_date(msg : Message) -> EmailDate? {
   }
 }
 
+///|
 /// Format an EmailDate in RFC 5322 format with full weekday.
 pub fn format_rfc5322_date(d : EmailDate) -> String {
   email_date_to_string(d)
 }
 
+///|
 /// Compare two EmailDates: returns -1, 0, or 1 based on their timestamps.
 pub fn compare_dates(a : EmailDate, b : EmailDate) -> Int {
   let ta = to_timestamp(a)
   let tb = to_timestamp(b)
-  if ta < tb { -1 } else if ta > tb { 1 } else { 0 }
+  if ta < tb {
+    -1
+  } else if ta > tb {
+    1
+  } else {
+    0
+  }
 }

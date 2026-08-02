@@ -8,7 +8,7 @@ repository = "https://github.com/Mr-Houjie/mbt-email"
 
 license = "MIT"
 
-keywords = ["email", "mime", "parser", "rfc5322", "rfc2045"]
+keywords = [ "email", "mime", "parser", "rfc5322", "rfc2045" ]
 
 preferred_target = "wasm-gc"
 

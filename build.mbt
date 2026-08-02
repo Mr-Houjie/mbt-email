@@ -3,8 +3,12 @@
 /// Provides helpers for building well-formed RFC 5322 messages and
 /// serializing headers with proper folding and encoded-words.
 
+///|
 /// Build a Message from header name/value pairs and a body.
-pub fn build_message(headers : Array[(String, String)], body : String) -> Message {
+pub fn build_message(
+  headers : Array[(String, String)],
+  body : String,
+) -> Message {
   let hs : Array[Header] = []
   for hi = 0; hi < headers.length(); hi = hi + 1 {
     let (name, value) = headers[hi]
@@ -13,23 +17,25 @@ pub fn build_message(headers : Array[(String, String)], body : String) -> Messag
   let clean_body = body.trim(chars="\r\n").to_owned()
   Message::{
     headers: hs,
-    body: if clean_body.length() > 0 { Some(clean_body) } else { None },
+    body: if clean_body.length() > 0 {
+      Some(clean_body)
+    } else {
+      None
+    },
     mime_part: None,
   }
 }
 
+///|
 /// Build a plain-text message from common fields.
 pub fn make_text_message(
   from~ : String,
   to~ : String,
   subject~ : String,
   body~ : String,
-  cc~ : String = "",
+  cc? : String = "",
 ) -> Message {
-  let headers : Array[(String, String)] = [
-    ("From", from),
-    ("To", to),
-  ]
+  let headers : Array[(String, String)] = [("From", from), ("To", to)]
   if cc.length() > 0 {
     headers.push(("Cc", cc))
   }
@@ -40,6 +46,7 @@ pub fn make_text_message(
   build_message(headers, body)
 }
 
+///|
 /// Build an HTML message with a text/plain alternative part.
 pub fn make_html_message(
   from~ : String,
@@ -49,22 +56,27 @@ pub fn make_html_message(
   html_body~ : String,
 ) -> Message {
   let boundary = "----=_mbt_alt_01"
-  let text_part =
-    "Content-Type: text/plain; charset=utf-8\r\n" +
+  let text_part = "Content-Type: text/plain; charset=utf-8\r\n" +
     "Content-Transfer-Encoding: 7bit\r\n" +
     "\r\n" +
-    text_body + "\r\n"
-  let html_part =
-    "Content-Type: text/html; charset=utf-8\r\n" +
+    text_body +
+    "\r\n"
+  let html_part = "Content-Type: text/html; charset=utf-8\r\n" +
     "Content-Transfer-Encoding: 7bit\r\n" +
     "\r\n" +
-    html_body + "\r\n"
-  let body =
-    "--" + boundary + "\r\n" +
+    html_body +
+    "\r\n"
+  let body = "--" +
+    boundary +
+    "\r\n" +
     text_part +
-    "--" + boundary + "\r\n" +
+    "--" +
+    boundary +
+    "\r\n" +
     html_part +
-    "--" + boundary + "--\r\n"
+    "--" +
+    boundary +
+    "--\r\n"
 
   let headers : Array[(String, String)] = [
     ("From", from),
@@ -76,6 +88,7 @@ pub fn make_html_message(
   build_message(headers, body)
 }
 
+///|
 /// Fold a header value at 78 columns using RFC 5322 folding rules.
 /// Continuation lines start with a single space.
 pub fn fold_header_value(name : String, value : String) -> String {
@@ -100,6 +113,7 @@ pub fn fold_header_value(name : String, value : String) -> String {
   name + ": " + sb.to_string()
 }
 
+///|
 /// Serialize a header block (all headers + blank line).
 pub fn serialize_header_block(headers : Array[Header]) -> String {
   let sb = StringBuilder::new()
@@ -112,6 +126,7 @@ pub fn serialize_header_block(headers : Array[Header]) -> String {
   sb.to_string()
 }
 
+///|
 /// Encode a header value for output: non-ASCII text becomes an
 /// RFC 2047 encoded-word. ASCII-only values pass through unchanged.
 pub fn encode_header_for_output(value : String) -> String {
@@ -122,16 +137,19 @@ pub fn encode_header_for_output(value : String) -> String {
   }
 }
 
+///|
 /// Serialize a list of mailboxes into a header value string.
 pub fn serialize_mailboxes(mbs : Array[Mailbox]) -> String {
   mailbox_list_to_string(mbs)
 }
 
+///|
 /// Render a plain-text message (without MIME) to a string.
 pub fn render_text_message(msg : Message) -> String {
   message_to_string(msg)
 }
 
+///|
 /// Render a message with folded headers.
 pub fn render_folded_message(msg : Message) -> String {
   let sb = StringBuilder::new()
@@ -157,6 +175,7 @@ pub fn render_folded_message(msg : Message) -> String {
   sb.to_string()
 }
 
+///|
 /// Render a MIME part tree with proper boundaries and content encodings.
 pub fn render_mime_tree(part : MimePart) -> String {
   let sb = StringBuilder::new()
@@ -164,6 +183,7 @@ pub fn render_mime_tree(part : MimePart) -> String {
   sb.to_string()
 }
 
+///|
 /// Recursively render a MIME part tree.
 fn render_mime_part_tree(part : MimePart, sb : StringBuilder) -> Unit {
   // Write the part headers
@@ -211,6 +231,7 @@ fn render_mime_part_tree(part : MimePart, sb : StringBuilder) -> Unit {
   }
 }
 
+///|
 /// Create a multipart/mixed message from text and attachment parts.
 pub fn make_multipart_message(
   from~ : String,
@@ -240,6 +261,7 @@ pub fn make_multipart_message(
   build_message(headers, body.to_string())
 }
 
+///|
 /// Serialize headers with RFC 2047 encoding applied to values.
 pub fn serialize_encoded_headers(headers : Array[Header]) -> String {
   let sb = StringBuilder::new()
@@ -253,6 +275,7 @@ pub fn serialize_encoded_headers(headers : Array[Header]) -> String {
   sb.to_string()
 }
 
+///|
 /// Convert a ContentType into a header value string.
 pub fn content_type_to_string(ct : ContentType) -> String {
   let sb = StringBuilder::new()
@@ -265,8 +288,11 @@ pub fn content_type_to_string(ct : ContentType) -> String {
     sb.write_string(k)
     sb.write_string("=")
     // Quote values containing special characters
-    let needs_quote = v.contains(";") || v.contains("\"") || v.contains(" ") ||
-                      v.contains("(") || v.contains(")")
+    let needs_quote = v.contains(";") ||
+      v.contains("\"") ||
+      v.contains(" ") ||
+      v.contains("(") ||
+      v.contains(")")
     if needs_quote {
       sb.write_string("\"")
       sb.write_string(v)
@@ -278,6 +304,7 @@ pub fn content_type_to_string(ct : ContentType) -> String {
   sb.to_string()
 }
 
+///|
 /// Convert a ContentDisposition into a header value string.
 pub fn disposition_to_string(cd : ContentDisposition) -> String {
   let sb = StringBuilder::new()
@@ -294,7 +321,11 @@ pub fn disposition_to_string(cd : ContentDisposition) -> String {
   sb.to_string()
 }
 
+///|
 /// Generate a random boundary string from a seed.
-pub fn generate_boundary(seed~ : Int = 0) -> String {
-  "----=_mbt_part_" + seed.to_string() + "_" + (seed * 48271 % 1000000000).to_string()
+pub fn generate_boundary(seed? : Int = 0) -> String {
+  "----=_mbt_part_" +
+  seed.to_string() +
+  "_" +
+  (seed * 48271 % 1000000000).to_string()
 }

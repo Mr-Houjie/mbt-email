@@ -1,3 +1,4 @@
+///|
 /// CLI demo for mbt-email: parse and display email messages.
 fn main {
   // Use a simple demo email when no arguments are provided
@@ -21,7 +22,14 @@ fn main {
         println("")
         println("=== Parsed From Addresses ===")
         for a in addrs {
-          println(@lib.address_to_string(a) + " (local=" + a.local_part + ", domain=" + a.domain + ")")
+          println(
+            @lib.address_to_string(a) +
+            " (local=" +
+            a.local_part +
+            ", domain=" +
+            a.domain +
+            ")",
+          )
         }
       }
     }

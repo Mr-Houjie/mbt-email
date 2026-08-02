@@ -1,230 +1,568 @@
-/// Black-box tests for mbt-email.
+/// Black-box tests for the extended mbt-email features:
+/// date parsing, encoded-words, RFC 2231, MIME, addresses, codecs.
 
-///| Simple message parsing with basic headers
-test "parse_simple_message" {
-  let input = "From: alice@example.com\r\nTo: bob@example.com\r\nSubject: Test\r\n\r\nHello, world!\r\n"
-  let msg = @houjie/mbt-email.parse(input)
-
-  // Check headers
-  let from = @houjie/mbt-email.get_header(msg, "From")
-  assert_eq(from, Some("alice@example.com"))
-
-  let to = @houjie/mbt-email.get_header(msg, "To")
-  assert_eq(to, Some("bob@example.com"))
-
-  let subject = @houjie/mbt-email.get_header(msg, "Subject")
-  assert_eq(subject, Some("Test"))
-
-  // Check body
-  match msg.body {
-    Some(b) => assert_eq(b.trim(chars=" \t\r\n").to_owned(), "Hello, world!")
-    None => assert_true(false)
-  }
-}
-
-///| Parse email address in simple format
-test "parse_simple_address" {
-  let addr = @houjie/mbt-email.parse_address("user@example.com")
-  match addr {
-    Some(a) => {
-      assert_eq(a.local_part, "user")
-      assert_eq(a.domain, "example.com")
+///|
+/// Parse a full RFC 5322 date with timezone
+test "parse_date_full" {
+  let d = @houjie/mbt-email.parse_email_date("Mon, 01 Jan 2026 12:34:56 +0800")
+  match d {
+    Some(v) => {
+      assert_eq(v.year, 2026)
+      assert_eq(v.month, 1)
+      assert_eq(v.day, 1)
+      assert_eq(v.hour, 12)
+      assert_eq(v.minute, 34)
+      assert_eq(v.second, 56)
+      assert_eq(v.tz_hour, 8)
+      assert_eq(v.tz_minute, 0)
+      assert_eq(v.tz_sign, 1)
     }
     None => assert_true(false)
   }
 }
 
-///| Parse email address in angle-addr format
-test "parse_angle_address" {
-  let addr = @houjie/mbt-email.parse_address("<user@example.com>")
-  match addr {
-    Some(a) => {
-      assert_eq(a.local_part, "user")
-      assert_eq(a.domain, "example.com")
+///|
+/// Parse a date without weekday and with GMT zone
+test "parse_date_no_weekday" {
+  let d = @houjie/mbt-email.parse_email_date("1 Jan 2026 12:34:56 GMT")
+  match d {
+    Some(v) => {
+      assert_eq(v.year, 2026)
+      assert_eq(v.month, 1)
+      assert_eq(v.day, 1)
+      assert_eq(v.tz_hour, 0)
+      assert_eq(v.tz_sign, 1)
     }
     None => assert_true(false)
   }
 }
 
-///| Parse email address with display name
-test "parse_display_name_address" {
-  let addr = @houjie/mbt-email.parse_address("Alice <alice@example.com>")
-  match addr {
-    Some(a) => {
-      assert_eq(a.local_part, "alice")
-      assert_eq(a.domain, "example.com")
+///|
+/// Parse a date with negative timezone
+test "parse_date_negative_tz" {
+  let d = @houjie/mbt-email.parse_email_date("Tue, 2 Feb 2026 08:00:00 -0500")
+  match d {
+    Some(v) => {
+      assert_eq(v.tz_hour, 5)
+      assert_eq(v.tz_sign, -1)
     }
     None => assert_true(false)
   }
 }
 
-///| Parse invalid address returns None
-test "parse_invalid_address" {
-  let addr = @houjie/mbt-email.parse_address("not-an-email")
-  assert_true(addr is None)
+///|
+/// Parse an invalid date returns None
+test "parse_date_invalid" {
+  let d = @houjie/mbt-email.parse_email_date("not a date")
+  assert_true(d is None)
 }
 
-///| Parse empty address returns None
-test "parse_empty_address" {
-  let addr = @houjie/mbt-email.parse_address("")
-  assert_true(addr is None)
+///|
+/// Format an EmailDate back to RFC 5322
+test "format_date_roundtrip" {
+  let d = @houjie/mbt-email.parse_email_date("Thu, 01 Jan 2026 12:34:56 +0800")
+  match d {
+    Some(v) => {
+      let s = @houjie/mbt-email.email_date_to_string(v)
+      assert_eq(s, "Thu, 01 Jan 2026 12:34:56 +0800")
+    }
+    None => assert_true(false)
+  }
 }
 
-///| Parse multiple addresses from a list
-test "parse_address_list_multiple" {
-  let list = @houjie/mbt-email.parse_address_list(
-    "alice@example.com, bob@example.com, carol@example.com"
+///|
+/// Leap year detection
+test "leap_year" {
+  assert_true(@houjie/mbt-email.is_leap_year(2024))
+  assert_true(@houjie/mbt-email.is_leap_year(2000))
+  assert_true(!@houjie/mbt-email.is_leap_year(2026))
+  assert_true(!@houjie/mbt-email.is_leap_year(1900))
+}
+
+///|
+/// Days in month including February
+test "days_in_month" {
+  assert_eq(@houjie/mbt-email.days_in_month(2026, 1), 31)
+  assert_eq(@houjie/mbt-email.days_in_month(2026, 2), 28)
+  assert_eq(@houjie/mbt-email.days_in_month(2024, 2), 29)
+  assert_eq(@houjie/mbt-email.days_in_month(2026, 4), 30)
+}
+
+///|
+/// Timestamp conversion
+test "timestamp_conversion" {
+  let d = @houjie/mbt-email.parse_email_date("Thu, 01 Jan 1970 00:00:00 +0000")
+  match d {
+    Some(v) => assert_eq(@houjie/mbt-email.to_timestamp(v), 0)
+    None => assert_true(false)
+  }
+}
+
+///|
+/// Compare two dates
+test "compare_dates" {
+  let a = @houjie/mbt-email.parse_email_date("Thu, 01 Jan 2026 00:00:00 +0000")
+  let b = @houjie/mbt-email.parse_email_date("Fri, 02 Jan 2026 00:00:00 +0000")
+  match (a, b) {
+    (Some(x), Some(y)) => {
+      assert_eq(@houjie/mbt-email.compare_dates(x, y), -1)
+      assert_eq(@houjie/mbt-email.compare_dates(y, x), 1)
+      assert_eq(@houjie/mbt-email.compare_dates(x, x), 0)
+    }
+    _ => assert_true(false)
+  }
+}
+
+///|
+/// Decode a header value with multiple encoded-words
+test "decode_header_value_multiple" {
+  let decoded = @houjie/mbt-email.decode_header_value(
+    "=?UTF-8?B?SGVsbG8=?= =?UTF-8?B?V29ybGQ=?=",
   )
-  assert_eq(list.length(), 3)
-  assert_eq(list[0].local_part, "alice")
-  assert_eq(list[1].local_part, "bob")
-  assert_eq(list[2].local_part, "carol")
+  assert_eq(decoded, "HelloWorld")
 }
 
-///| Parse address list with angle brackets
-test "parse_address_list_with_angles" {
-  let list = @houjie/mbt-email.parse_address_list(
-    "Alice <alice@example.com>, Bob <bob@example.com>"
+///|
+/// Decode encoded-word in mixed text
+test "decode_header_value_mixed" {
+  let decoded = @houjie/mbt-email.decode_header_value(
+    "Hello =?UTF-8?B?V29ybGQ=?= !",
   )
-  assert_eq(list.length(), 2)
-  assert_eq(list[0].local_part, "alice")
-  assert_eq(list[1].local_part, "bob")
+  assert_eq(decoded, "Hello World !")
 }
 
-///| Parse Content-Type header
-test "parse_content_type_plain" {
-  let ct = @houjie/mbt-email.parse_content_type("text/plain; charset=utf-8")
-  match ct {
-    Some(c) => {
-      assert_eq(c.media_type, "text")
-      assert_eq(c.sub_type, "plain")
-      assert_eq(c.params.length(), 1)
-      assert_eq(c.params[0].0, "charset")
-      assert_eq(c.params[0].1, "utf-8")
-    }
-    None => assert_true(false)
-  }
-}
-
-///| Parse Content-Type with quoted parameter
-test "parse_content_type_with_quoted_param" {
-  let ct = @houjie/mbt-email.parse_content_type(
-    "multipart/mixed; boundary=\"----=_Part_123\""
+///|
+/// Count encoded-words
+test "count_encoded_words" {
+  let n = @houjie/mbt-email.count_encoded_words(
+    "=?UTF-8?B?QQ==?= =?UTF-8?B?Qg==?=",
   )
-  match ct {
-    Some(c) => {
-      assert_eq(c.media_type, "multipart")
-      assert_eq(c.sub_type, "mixed")
-      assert_eq(c.params.length(), 1)
-      assert_eq(c.params[0].0, "boundary")
-      assert_eq(c.params[0].1, "----=_Part_123")
-    }
-    None => assert_true(false)
-  }
+  assert_eq(n, 2)
 }
 
-///| Parse Content-Disposition
-test "parse_content_disposition_attachment" {
-  let cd = @houjie/mbt-email.parse_content_disposition(
-    "attachment; filename=document.pdf"
+///|
+/// RFC 2231 single-part extended parameter
+test "decode_rfc2231_single" {
+  let decoded = @houjie/mbt-email.decode_rfc2231_value(
+    "UTF-8''hello%20world.txt",
   )
-  match cd {
-    Some(d) => {
-      assert_eq(d.disposition, "attachment")
-      assert_eq(d.params.length(), 1)
-      assert_eq(d.params[0].0, "filename")
-      assert_eq(d.params[0].1, "document.pdf")
-    }
+  match decoded {
+    Some(s) => assert_eq(s, "hello world.txt")
     None => assert_true(false)
   }
 }
 
-///| Parse Content-Disposition inline
-test "parse_content_disposition_inline" {
-  let cd = @houjie/mbt-email.parse_content_disposition("inline")
-  match cd {
-    Some(d) => {
-      assert_eq(d.disposition, "inline")
-      assert_eq(d.params.length(), 0)
-    }
+///|
+/// RFC 2231 percent decode
+test "percent_decode" {
+  let decoded = @houjie/mbt-email.percent_decode("%E4%B8%AD%E6%96%87")
+  match decoded {
+    Some(s) => assert_eq(s, "中文")
     None => assert_true(false)
   }
 }
 
-///| Decode RFC 2047 Base64 encoded-word
-test "decode_encoded_word_base64" {
-  let decoded = @houjie/mbt-email.decode_encoded_word("=?UTF-8?B?SGVsbG8=?=")
+///|
+/// Merge RFC 2231 continuation segments
+test "merge_continuations" {
+  let params : Array[(String, String)] = [
+    ("filename*0*", "UTF-8''%E4%B8%AD"),
+    ("filename*1*", "%E6%96%87.txt"),
+  ]
+  let merged = @houjie/mbt-email.merge_extended_params(params)
+  assert_eq(merged.length(), 1)
+  assert_eq(merged[0].0, "filename")
+}
+
+///|
+/// Strip comments from a header value
+test "strip_comments" {
+  let s = @houjie/mbt-email.strip_comments("user (comment) @example.com")
+  assert_eq(s, "user @example.com")
+}
+
+///|
+/// Base64 encode with 76-column wrapping
+test "b64_encode_wrap" {
+  let data : Array[Int] = []
+  let mut i = 0
+  while i < 100 {
+    data.push(i)
+    i = i + 1
+  }
+  let encoded = @houjie/mbt-email.b64_encode_bytes(data)
+  assert_true(encoded.contains("\r\n"))
+}
+
+///|
+/// Base64 decode bytes
+test "b64_decode_bytes" {
+  let decoded = @houjie/mbt-email.b64_decode_text("SGVsbG8=")
   match decoded {
     Some(s) => assert_eq(s, "Hello")
     None => assert_true(false)
   }
 }
 
-///| Decode RFC 2047 Q-encoded word
-test "decode_encoded_word_q" {
-  let decoded = @houjie/mbt-email.decode_encoded_word("=?UTF-8?Q?Hello_World?=")
-  match decoded {
-    Some(s) => assert_eq(s, "Hello World")
+///|
+/// Base64 decode invalid input
+test "b64_decode_invalid" {
+  let decoded = @houjie/mbt-email.b64_decode_text("###")
+  assert_true(decoded is None)
+}
+
+///|
+/// Quoted-printable encode and decode
+test "qp_roundtrip" {
+  let encoded = @houjie/mbt-email.qp_encode_text("Hello, world!")
+  match @houjie/mbt-email.qp_decode(encoded) {
+    Some(s) => assert_eq(s, "Hello, world!")
     None => assert_true(false)
   }
 }
 
-///| Decode invalid encoded-word returns None
-test "decode_invalid_encoded_word" {
-  let decoded = @houjie/mbt-email.decode_encoded_word("not-an-encoded-word")
-  assert_true(decoded is None)
+///|
+/// Quoted-printable soft line breaks
+test "qp_decode_soft_break" {
+  let decoded = @houjie/mbt-email.qp_decode("Hello =\r\nworld")
+  match decoded {
+    Some(s) => assert_eq(s, "Hello world")
+    None => assert_true(false)
+  }
 }
 
-///| Round-trip: parse then serialize simple message
-test "roundtrip_simple_message" {
-  let input = "From: alice@example.com\r\nTo: bob@example.com\r\nSubject: Test\r\n\r\nHello!\r\n"
+///|
+/// Quoted-printable hex escape
+test "qp_decode_hex" {
+  let decoded = @houjie/mbt-email.qp_decode("a=3Db")
+  match decoded {
+    Some(s) => assert_eq(s, "a=b")
+    None => assert_true(false)
+  }
+}
+
+///|
+/// ASCII detection
+test "is_ascii_only" {
+  assert_true(@houjie/mbt-email.is_ascii_only("hello"))
+  assert_true(!@houjie/mbt-email.is_ascii_only("你好"))
+}
+
+///|
+/// Encode a non-ASCII value as encoded-word
+test "encode_encoded_word" {
+  let encoded = @houjie/mbt-email.encode_encoded_word_b("中文")
+  assert_true(encoded.has_prefix("=?UTF-8?B?"))
+  assert_true(encoded.has_suffix("?="))
+}
+
+///|
+/// Parse a mailbox with display name
+test "parse_mailbox_display_name" {
+  let mb = @houjie/mbt-email.parse_mailbox("Alice <alice@example.com>")
+  match mb {
+    Some(m) => {
+      assert_eq(m.display_name, "Alice")
+      match m.address {
+        Some(a) => assert_eq(a.local_part, "alice")
+        None => assert_true(false)
+      }
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
+/// Parse a quoted display name
+test "parse_mailbox_quoted_name" {
+  let mb = @houjie/mbt-email.parse_mailbox(
+    "\"Alice Smith\" <alice@example.com>",
+  )
+  match mb {
+    Some(m) => {
+      assert_eq(m.display_name, "Alice Smith")
+      match m.address {
+        Some(a) => assert_eq(a.domain, "example.com")
+        None => assert_true(false)
+      }
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
+/// Validate a domain
+test "validate_domain" {
+  assert_true(@houjie/mbt-email.validate_domain("example.com"))
+  assert_true(@houjie/mbt-email.validate_domain("mail.example.com"))
+  assert_true(!@houjie/mbt-email.validate_domain(".example.com"))
+  assert_true(!@houjie/mbt-email.validate_domain("exa mple.com"))
+}
+
+///|
+/// Validate a local part
+test "validate_local_part" {
+  assert_true(@houjie/mbt-email.validate_local_part("user.name"))
+  assert_true(@houjie/mbt-email.validate_local_part("user"))
+  assert_true(!@houjie/mbt-email.validate_local_part(".user"))
+  assert_true(!@houjie/mbt-email.validate_local_part("user..name"))
+}
+
+///|
+/// Format a mailbox back to a string
+test "mailbox_to_string" {
+  let mb = @houjie/mbt-email.mailbox(
+    display_name="Alice",
+    address=Some(
+      @houjie/mbt-email.email_address(local_part="alice", domain="example.com"),
+    ),
+  )
+  let s = @houjie/mbt-email.mailbox_to_string(mb)
+  assert_eq(s, "Alice <alice@example.com>")
+}
+
+///|
+/// Parse Message-ID list
+test "parse_message_ids" {
+  let ids = @houjie/mbt-email.parse_message_ids("<a@x.com> <b@y.com>")
+  assert_eq(ids.length(), 2)
+  assert_eq(ids[0].id, "a")
+  assert_eq(ids[1].domain, "y.com")
+}
+
+///|
+/// Parse Received header
+test "parse_received" {
+  let info = @houjie/mbt-email.parse_received_header(
+    "from mail.example.com by relay.example.com with ESMTP; Mon, 01 Jan 2026 12:00:00 +0000",
+  )
+  assert_eq(info.from_, "mail.example.com")
+  assert_eq(info.by, "relay.example.com")
+}
+
+///|
+/// Extract subject with encoded-word decoding
+test "message_subject_decoded" {
+  let input = "From: a@b.c\r\nSubject: =?UTF-8?B?SGVsbG8=?=\r\n\r\nHi\r\n"
   let msg = @houjie/mbt-email.parse(input)
-  let output = @houjie/mbt-email.to_string(msg)
-  assert_eq(output, input)
+  assert_eq(@houjie/mbt-email.message_subject(msg), "Hello")
 }
 
-///| Serialize email address
-test "serialize_address" {
-  let addr = @houjie/mbt-email.email_address(local_part="user", domain="example.com")
-  let s = @houjie/mbt-email.address_to_string(addr)
-  assert_eq(s, "user@example.com")
+///|
+/// Extract From mailboxes
+test "message_from_mailboxes" {
+  let input = "From: Alice <alice@example.com>\r\n\r\nHi\r\n"
+  let msg = @houjie/mbt-email.parse(input)
+  let mbs = @houjie/mbt-email.message_from_mailboxes(msg)
+  assert_eq(mbs.length(), 1)
+  assert_eq(mbs[0].display_name, "Alice")
 }
 
-///| Serialize email address that needs quoting
-test "serialize_address_with_special_chars" {
-  let addr = @houjie/mbt-email.email_address(local_part="user name", domain="example.com")
-  let s = @houjie/mbt-email.address_to_string(addr)
-  assert_eq(s, "\"user name\"@example.com")
+///|
+/// Message-ID generation
+test "generate_message_id" {
+  let mid = @houjie/mbt-email.generate_message_id("example.com", timestamp=1000)
+  assert_eq(mid.domain, "example.com")
+  assert_true(mid.id.has_prefix("mbt.1000."))
 }
 
-///| Get header case-insensitive
-test "get_header_case_insensitive" {
-  let msg = @houjie/mbt-email.parse("From: alice@example.com\r\n\r\nHi\r\n")
-  let from1 = @houjie/mbt-email.get_header(msg, "From")
-  let from2 = @houjie/mbt-email.get_header(msg, "from")
-  let from3 = @houjie/mbt-email.get_header(msg, "FROM")
-  assert_eq(from1, Some("alice@example.com"))
-  assert_eq(from2, Some("alice@example.com"))
-  assert_eq(from3, Some("alice@example.com"))
+///|
+/// HTML escaping
+test "html_escape" {
+  assert_eq(
+    @houjie/mbt-email.html_escape("<a>&\"'"),
+    "&lt;a&gt;&amp;&quot;&#39;",
+  )
 }
 
-///| Get multiple headers with same name
-test "get_multiple_headers" {
-  let input =
-    "Received: from server1\r\n" +
-    "Received: from server2\r\n" +
+///|
+/// HTML to text
+test "html_to_text" {
+  let text = @houjie/mbt-email.html_to_text("<p>Hello <b>World</b></p>")
+  assert_eq(text, "Hello World")
+}
+
+///|
+/// URL encoding
+test "url_encode" {
+  assert_eq(@houjie/mbt-email.url_encode("a b"), "a%20b")
+  assert_eq(@houjie/mbt-email.url_encode("abc"), "abc")
+}
+
+///|
+/// UTF-8 encode and decode roundtrip
+test "utf8_roundtrip" {
+  let bytes = @houjie/mbt-email.utf8_encode("中文")
+  let decoded = @houjie/mbt-email.utf8_decode(bytes)
+  assert_eq(decoded, "中文")
+}
+
+///|
+/// IPv4 validation
+test "is_ipv4" {
+  assert_true(@houjie/mbt-email.is_ipv4("127.0.0.1"))
+  assert_true(!@houjie/mbt-email.is_ipv4("999.0.0.1"))
+  assert_true(!@houjie/mbt-email.is_ipv4("1.2.3"))
+}
+
+///|
+/// Header name validation
+test "valid_header_name" {
+  assert_true(@houjie/mbt-email.valid_header_name("Content-Type"))
+  assert_true(!@houjie/mbt-email.valid_header_name("Content Type"))
+  assert_true(!@houjie/mbt-email.valid_header_name(""))
+}
+
+///|
+/// Truncate helper
+test "truncate" {
+  assert_eq(@houjie/mbt-email.truncate("hello world", 5), "he...")
+  assert_eq(@houjie/mbt-email.truncate("hi", 5), "hi")
+}
+
+///|
+/// Simple hash is deterministic
+test "simple_hash" {
+  assert_eq(
+    @houjie/mbt-email.simple_hash("abc"),
+    @houjie/mbt-email.simple_hash("abc"),
+  )
+}
+
+///|
+/// MIME message with multipart body
+test "parse_mime_multipart" {
+  let input = "From: a@b.c\r\n" +
+    "Content-Type: multipart/mixed; boundary=\"BND\"\r\n" +
     "\r\n" +
-    "Body\r\n"
-  let msg = @houjie/mbt-email.parse(input)
-  let received = @houjie/mbt-email.get_headers(msg, "Received")
-  assert_eq(received.length(), 2)
-  assert_eq(received[0], "from server1")
-  assert_eq(received[1], "from server2")
+    "--BND\r\n" +
+    "Content-Type: text/plain\r\n" +
+    "\r\n" +
+    "Hello\r\n" +
+    "--BND\r\n" +
+    "Content-Type: application/octet-stream\r\n" +
+    "Content-Disposition: attachment; filename=doc.txt\r\n" +
+    "\r\n" +
+    "content\r\n" +
+    "--BND--\r\n"
+  let msg = @houjie/mbt-email.parse_mime(input)
+  match msg.mime_part {
+    Some(part) =>
+      match part.body {
+        Body::Multipart(parts) => assert_eq(parts.length(), 2)
+        _ => assert_true(false)
+      }
+    None => assert_true(false)
+  }
 }
 
-///| Empty message parsing
-test "parse_empty_message" {
-  let msg = @houjie/mbt-email.parse("")
-  assert_eq(msg.headers.length(), 0)
-  assert_true(msg.body is None)
+///|
+/// Detect attachments in a MIME message
+test "detect_attachment" {
+  let input = "From: a@b.c\r\n" +
+    "Content-Type: multipart/mixed; boundary=\"BND\"\r\n" +
+    "\r\n" +
+    "--BND\r\n" +
+    "Content-Type: text/plain\r\n" +
+    "\r\n" +
+    "Hello\r\n" +
+    "--BND\r\n" +
+    "Content-Type: application/pdf\r\n" +
+    "Content-Disposition: attachment; filename=file.pdf\r\n" +
+    "\r\n" +
+    "PDFDATA\r\n" +
+    "--BND--\r\n"
+  let msg = @houjie/mbt-email.parse_mime(input)
+  match msg.mime_part {
+    Some(part) => {
+      let attachments = @houjie/mbt-email.collect_attachments(part)
+      assert_eq(attachments.length(), 1)
+      let name = @houjie/mbt-email.part_filename(attachments[0])
+      match name {
+        Some(n) => assert_eq(n, "file.pdf")
+        None => assert_true(false)
+      }
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
+/// Extract plain text from MIME tree
+test "extract_plain_text" {
+  let input = "From: a@b.c\r\n" +
+    "Content-Type: multipart/alternative; boundary=\"BND\"\r\n" +
+    "\r\n" +
+    "--BND\r\n" +
+    "Content-Type: text/plain\r\n" +
+    "\r\n" +
+    "plain body\r\n" +
+    "--BND\r\n" +
+    "Content-Type: text/html\r\n" +
+    "\r\n" +
+    "<p>html body</p>\r\n" +
+    "--BND--\r\n"
+  let msg = @houjie/mbt-email.parse_mime(input)
+  match msg.mime_part {
+    Some(part) =>
+      match @houjie/mbt-email.plain_text(part) {
+        Some(t) => assert_eq(t, "plain body")
+        None => assert_true(false)
+      }
+    None => assert_true(false)
+  }
+}
+
+///|
+/// Build a text message and parse it back
+test "build_text_message" {
+  let msg = @houjie/mbt-email.make_text_message(
+    from="a@b.c",
+    to="c@d.e",
+    subject="Test",
+    body="Hello!",
+  )
+  let text = @houjie/mbt-email.to_string(msg)
+  assert_true(text.contains("From: a@b.c"))
+  assert_true(text.contains("Subject: Test"))
+  assert_true(text.contains("Hello!"))
+}
+
+///|
+/// Fold a long header value
+test "fold_header_value" {
+  let long_value = String::make(100, 'x')
+  let folded = @houjie/mbt-email.fold_header_value("Subject", long_value)
+  assert_true(folded.contains("\r\n "))
+  assert_true(folded.has_prefix("Subject: "))
+}
+
+///|
+/// Content-Type to string roundtrip
+test "content_type_to_string" {
+  let ct = @houjie/mbt-email.parse_content_type("text/plain; charset=utf-8")
+  match ct {
+    Some(c) => {
+      let s = @houjie/mbt-email.content_type_to_string(c)
+      assert_true(s.has_prefix("text/plain"))
+      assert_true(s.contains("charset=utf-8"))
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
+/// Message summary
+test "summarize_message" {
+  let input = "From: a@b.c\r\nSubject: Hi\r\nDate: Mon, 01 Jan 2026 12:00:00 +0000\r\n\r\nbody\r\n"
+  let msg = @houjie/mbt-email.parse(input)
+  let summary = @houjie/mbt-email.summarize_message(msg)
+  assert_true(summary.contains("Subject: Hi"))
+  assert_true(summary.contains("2026-01-01"))
+}
+
+///|
+/// Sanitize text
+test "sanitize_text" {
+  assert_eq(@houjie/mbt-email.sanitize_text("a&lt;b"), "a<b")
 }

@@ -10,6 +10,7 @@
 /// boundary delimiters. Each part's headers and body are captured and
 /// converted into the shared AST types.
 
+///|
 /// Parse a full MIME message from raw text.
 /// Returns a Message with an optional MimePart tree.
 pub fn parse_mime_message(input : String) -> Message {
@@ -25,7 +26,7 @@ pub fn parse_mime_message(input : String) -> Message {
       let ct = parse_content_type(v)
       match ct {
         None => None
-        Some(parsed) => {
+        Some(parsed) =>
           if is_multipart(parsed) {
             // Find boundary parameter
             let boundary = content_type_param(parsed, "boundary")
@@ -42,10 +43,7 @@ pub fn parse_mime_message(input : String) -> Message {
                       let part = parse_mime_part(sub)
                       parts.push(part)
                     }
-                    Some(MimePart::{
-                      headers: [],
-                      body: Body::Multipart(parts),
-                    })
+                    Some(MimePart::{ headers: [], body: Body::Multipart(parts) })
                   }
                 }
               }
@@ -71,18 +69,14 @@ pub fn parse_mime_message(input : String) -> Message {
               }
             }
           }
-        }
       }
     }
   }
 
-  Message::{
-    headers,
-    body: base.body,
-    mime_part,
-  }
+  Message::{ headers, body: base.body, mime_part }
 }
 
+///|
 /// Get a header value from an array of headers (case-insensitive).
 fn get_header_from_array(headers : Array[Header], name : String) -> String? {
   let lower = name.to_lower()
@@ -94,6 +88,7 @@ fn get_header_from_array(headers : Array[Header], name : String) -> String? {
   None
 }
 
+///|
 /// Get the body text of a message, trimming a single trailing newline.
 fn get_message_body(msg : Message) -> String? {
   match msg.body {
@@ -109,6 +104,7 @@ fn get_message_body(msg : Message) -> String? {
   }
 }
 
+///|
 /// Check whether a header name is a MIME-specific header.
 fn is_mime_header(name : String) -> Bool {
   let lower = name.to_lower()
@@ -120,6 +116,7 @@ fn is_mime_header(name : String) -> Bool {
   lower == "mime-version"
 }
 
+///|
 /// Decode a message body based on its Content-Transfer-Encoding header.
 /// Supports base64 and quoted-printable; other encodings pass through.
 fn decode_body_if_needed(body_text : String, headers : Array[Header]) -> String {
@@ -145,6 +142,7 @@ fn decode_body_if_needed(body_text : String, headers : Array[Header]) -> String 
   }
 }
 
+///|
 /// Remove all whitespace characters from a string.
 fn remove_whitespace(input : String) -> String {
   let sb = StringBuilder::new()
@@ -156,6 +154,7 @@ fn remove_whitespace(input : String) -> String {
   sb.to_string()
 }
 
+///|
 /// Decode a quoted-printable encoded string (RFC 2045 section 6.7).
 fn quoted_printable_decode(input : String) -> String? {
   let sb = StringBuilder::new()
@@ -168,8 +167,9 @@ fn quoted_printable_decode(input : String) -> String? {
         // Soft line break: skip both characters
         i = i + 2
         continue
-      } else if i + 2 < len && input.get_char(i + 1).unwrap() == '\r' &&
-                input.get_char(i + 2).unwrap() == '\n' {
+      } else if i + 2 < len &&
+        input.get_char(i + 1).unwrap() == '\r' &&
+        input.get_char(i + 2).unwrap() == '\n' {
         // Soft line break with CRLF: skip all three
         i = i + 3
         continue
@@ -201,6 +201,7 @@ fn quoted_printable_decode(input : String) -> String? {
   Some(sb.to_string())
 }
 
+///|
 /// Parse a two-char hex string to an integer value.
 fn hex_value(h1 : Char, h2 : Char) -> Int? {
   let hi = hex_digit(h1)
@@ -211,6 +212,7 @@ fn hex_value(h1 : Char, h2 : Char) -> Int? {
   }
 }
 
+///|
 /// Convert a hex character to its numeric value.
 fn hex_digit(c : Char) -> Int? {
   if c >= '0' && c <= '9' {
@@ -224,6 +226,7 @@ fn hex_digit(c : Char) -> Int? {
   }
 }
 
+///|
 /// Split a multipart body into raw sub-part strings using a boundary.
 fn split_multipart(body : String, boundary : String) -> Array[String] {
   let results : Array[String] = []
@@ -275,6 +278,7 @@ fn split_multipart(body : String, boundary : String) -> Array[String] {
   results
 }
 
+///|
 /// Split a string into lines (keeping line contents, without newlines).
 fn split_lines(input : String) -> Array[String] {
   let results : Array[String] = []
@@ -284,7 +288,7 @@ fn split_lines(input : String) -> Array[String] {
   while i < len {
     let c = input.get_char(i).unwrap()
     if c == '\n' {
-      let line = input.unsafe_substring(start=start, end=i)
+      let line = input.unsafe_substring(start~, end=i)
       // Strip trailing \r
       let clean = if line.has_suffix("\r") {
         line.unsafe_substring(start=0, end=line.length() - 1)
@@ -297,11 +301,12 @@ fn split_lines(input : String) -> Array[String] {
     i = i + 1
   }
   if start < len {
-    results.push(input.unsafe_substring(start=start, end=len))
+    results.push(input.unsafe_substring(start~, end=len))
   }
   results
 }
 
+///|
 /// Join an array of lines back into a string with newlines.
 fn join_lines(lines : Array[String]) -> String {
   let sb = StringBuilder::new()
@@ -316,15 +321,18 @@ fn join_lines(lines : Array[String]) -> String {
   sb.to_string()
 }
 
+///|
 /// Trim leading and trailing blank lines from a part body.
 fn trim_part(input : String) -> String {
   let lines = split_lines(input)
   let mut start = 0
   let mut end = lines.length()
-  while start < end && lines[start].trim(chars=" \t\r\n").to_owned().length() == 0 {
+  while start < end &&
+        lines[start].trim(chars=" \t\r\n").to_owned().length() == 0 {
     start = start + 1
   }
-  while end > start && lines[end - 1].trim(chars=" \t\r\n").to_owned().length() == 0 {
+  while end > start &&
+        lines[end - 1].trim(chars=" \t\r\n").to_owned().length() == 0 {
     end = end - 1
   }
   let trimmed : Array[String] = []
@@ -336,6 +344,7 @@ fn trim_part(input : String) -> String {
   join_lines(trimmed)
 }
 
+///|
 /// Parse a single MIME part from its raw text (headers + body).
 fn parse_mime_part(raw : String) -> MimePart {
   let base = parse_message(raw)
@@ -380,12 +389,10 @@ fn parse_mime_part(raw : String) -> MimePart {
     None => Body::Text(decoded)
   }
 
-  MimePart::{
-    headers,
-    body: part_body,
-  }
+  MimePart::{ headers, body: part_body }
 }
 
+///|
 /// Check whether a MIME part is an attachment (has attachment disposition).
 pub fn is_attachment(part : MimePart) -> Bool {
   let cd = get_header_from_array(part.headers, "Content-Disposition")
@@ -401,6 +408,7 @@ pub fn is_attachment(part : MimePart) -> Bool {
   }
 }
 
+///|
 /// Get the filename from a MIME part, if any.
 pub fn part_filename(part : MimePart) -> String? {
   let cd = get_header_from_array(part.headers, "Content-Disposition")
@@ -429,27 +437,24 @@ pub fn part_filename(part : MimePart) -> String? {
   }
 }
 
+///|
 /// Collect all attachments from a MIME part tree.
 pub fn collect_attachments(part : MimePart) -> Array[MimePart] {
   let results : Array[MimePart] = []
   match part.body {
-    Body::Multipart(parts) => {
+    Body::Multipart(parts) =>
       for p in parts {
         let sub = collect_attachments(p)
         for s in sub {
           results.push(s)
         }
       }
-    }
-    _ => {
-      if is_attachment(part) {
-        results.push(part)
-      }
-    }
+    _ => if is_attachment(part) { results.push(part) }
   }
   results
 }
 
+///|
 /// Get the plain-text content from a MIME part tree, if any.
 pub fn plain_text(part : MimePart) -> String? {
   match part.body {
@@ -465,7 +470,7 @@ pub fn plain_text(part : MimePart) -> String? {
               None => ()
             }
           }
-          Some(v) => {
+          Some(v) =>
             if v.to_lower().contains("text/plain") {
               let t = plain_text(p)
               match t {
@@ -479,7 +484,6 @@ pub fn plain_text(part : MimePart) -> String? {
                 None => ()
               }
             }
-          }
         }
       }
       None
@@ -488,6 +492,7 @@ pub fn plain_text(part : MimePart) -> String? {
   }
 }
 
+///|
 /// Extract the text content of a MIME part as a string.
 /// For text parts returns the decoded text; for binary parts returns None.
 pub fn part_body_text(part : MimePart) -> String? {

@@ -6,6 +6,7 @@
 ///   - Structured access to From/To/Cc/Subject headers
 ///   - Subject decoding (RFC 2047)
 
+///|
 /// Parse a Message-ID or a space-separated list of Message-IDs.
 /// Handles both "<a@b>" and "<a@b> <c@d>" formats.
 pub fn parse_message_ids(input : String) -> Array[MessageId] {
@@ -14,24 +15,25 @@ pub fn parse_message_ids(input : String) -> Array[MessageId] {
   if s.length() == 0 {
     return results
   }
-  // Find all <...> tokens
+  // Find all <...> tokens by scanning for each '<' and its matching '>'
   let len = s.length()
   let mut i = 0
   while i < len {
     if s.get_char(i).unwrap() == '<' {
-      let end = s.find(">")
-      match end {
-        Some(ep) if ep > i => {
-          let id_str = s.unsafe_substring(start=i, end=ep + 1)
-          let mid = parse_message_id(id_str)
-          match mid {
-            Some(m) => results.push(m)
-            None => ()
-          }
-          i = ep + 1
-          continue
+      // Find the closing '>' after this position
+      let mut j = i + 1
+      while j < len && s.get_char(j).unwrap() != '>' {
+        j = j + 1
+      }
+      if j < len {
+        let id_str = s.unsafe_substring(start=i, end=j + 1)
+        let mid = parse_message_id(id_str)
+        match mid {
+          Some(m) => results.push(m)
+          None => ()
         }
-        _ => ()
+        i = j + 1
+        continue
       }
     }
     i = i + 1
@@ -39,6 +41,7 @@ pub fn parse_message_ids(input : String) -> Array[MessageId] {
   results
 }
 
+///|
 /// Parse a Received header value into structured ReceivedInfo.
 ///
 /// Format: from a by b with c for d; date
@@ -55,18 +58,21 @@ pub fn parse_received_header(value : String) -> ReceivedInfo {
   let semi = s.find(";")
   let (clause_part, date_part) = match semi {
     None => (s, "")
-    Some(sp) => {
-      (s.unsafe_substring(start=0, end=sp), s.unsafe_substring(start=sp + 1, end=s.length()).trim(chars=" \t").to_owned())
-    }
+    Some(sp) =>
+      (
+        s.unsafe_substring(start=0, end=sp),
+        s
+        .unsafe_substring(start=sp + 1, end=s.length())
+        .trim(chars=" \t")
+        .to_owned(),
+      )
   }
 
   // Parse the date portion
   let date_parsed = parse_email_date(date_part)
   match date_parsed {
     None => ()
-    Some(d) => {
-      date_str = email_date_to_string(d)
-    }
+    Some(d) => date_str = email_date_to_string(d)
   }
 
   // Tokenize the clause part and extract known keywords
@@ -100,6 +106,7 @@ pub fn parse_received_header(value : String) -> ReceivedInfo {
   )
 }
 
+///|
 /// Split a string on whitespace into tokens.
 fn split_ws(input : String) -> Array[String] {
   let tokens : Array[String] = []
@@ -123,6 +130,7 @@ fn split_ws(input : String) -> Array[String] {
   tokens
 }
 
+///|
 /// Get the parsed From addresses of a message as Mailboxes.
 pub fn message_from_mailboxes(msg : Message) -> Array[Mailbox] {
   let value = get_header(msg, "From")
@@ -132,6 +140,7 @@ pub fn message_from_mailboxes(msg : Message) -> Array[Mailbox] {
   }
 }
 
+///|
 /// Get the parsed To addresses of a message as Mailboxes.
 pub fn message_to_mailboxes(msg : Message) -> Array[Mailbox] {
   let value = get_header(msg, "To")
@@ -141,6 +150,7 @@ pub fn message_to_mailboxes(msg : Message) -> Array[Mailbox] {
   }
 }
 
+///|
 /// Get the parsed Cc addresses of a message as Mailboxes.
 pub fn message_cc_mailboxes(msg : Message) -> Array[Mailbox] {
   let value = get_header(msg, "Cc")
@@ -150,6 +160,7 @@ pub fn message_cc_mailboxes(msg : Message) -> Array[Mailbox] {
   }
 }
 
+///|
 /// Get the decoded Subject of a message.
 /// RFC 2047 encoded-words are decoded to plain text.
 pub fn message_subject(msg : Message) -> String {
@@ -160,6 +171,7 @@ pub fn message_subject(msg : Message) -> String {
   }
 }
 
+///|
 /// Get the Message-ID of a message, if present.
 pub fn message_message_id(msg : Message) -> MessageId? {
   let value = get_header(msg, "Message-ID")
@@ -169,6 +181,7 @@ pub fn message_message_id(msg : Message) -> MessageId? {
   }
 }
 
+///|
 /// Get the References header of a message as a list of MessageIds.
 pub fn message_references(msg : Message) -> Array[MessageId] {
   let value = get_header(msg, "References")
@@ -178,6 +191,7 @@ pub fn message_references(msg : Message) -> Array[MessageId] {
   }
 }
 
+///|
 /// Get the In-Reply-To header of a message as a list of MessageIds.
 pub fn message_in_reply_to(msg : Message) -> Array[MessageId] {
   let value = get_header(msg, "In-Reply-To")
@@ -187,6 +201,7 @@ pub fn message_in_reply_to(msg : Message) -> Array[MessageId] {
   }
 }
 
+///|
 /// Get the Received chain of a message (topmost first).
 pub fn message_received_chain(msg : Message) -> Array[ReceivedInfo] {
   let results : Array[ReceivedInfo] = []
@@ -201,6 +216,7 @@ pub fn message_received_chain(msg : Message) -> Array[ReceivedInfo] {
   results
 }
 
+///|
 /// Get the Reply-To addresses of a message, falling back to From.
 pub fn message_reply_to(msg : Message) -> Array[Mailbox] {
   let rt = get_header(msg, "Reply-To")
@@ -210,17 +226,21 @@ pub fn message_reply_to(msg : Message) -> Array[Mailbox] {
   }
 }
 
+///|
 /// Check whether the message is a reply (has In-Reply-To or References).
 pub fn is_reply(msg : Message) -> Bool {
   has_header(msg, "In-Reply-To") || has_header(msg, "References")
 }
 
+///|
 /// Check whether the message is a bounce/undeliverable notice.
 pub fn is_bounce(msg : Message) -> Bool {
-  has_header(msg, "Return-Path") || has_header(msg, "X-Failed-Recipients") ||
+  has_header(msg, "Return-Path") ||
+  has_header(msg, "X-Failed-Recipients") ||
   has_header(msg, "Diagnostic-Code")
 }
 
+///|
 /// Get the Return-Path address, if present.
 pub fn message_return_path(msg : Message) -> EmailAddress? {
   let value = get_header(msg, "Return-Path")
@@ -237,6 +257,7 @@ pub fn message_return_path(msg : Message) -> EmailAddress? {
   }
 }
 
+///|
 /// Get the Content-Type of a message as a decoded ContentType.
 /// RFC 2231 extended parameters are merged.
 pub fn message_decoded_content_type(msg : Message) -> ContentType? {
@@ -247,6 +268,7 @@ pub fn message_decoded_content_type(msg : Message) -> ContentType? {
   }
 }
 
+///|
 /// Get the Content-Disposition of a message as a decoded ContentDisposition.
 pub fn message_decoded_disposition(msg : Message) -> ContentDisposition? {
   let value = get_header(msg, "Content-Disposition")
@@ -256,6 +278,7 @@ pub fn message_decoded_disposition(msg : Message) -> ContentDisposition? {
   }
 }
 
+///|
 /// Extract all email addresses from the From, To, Cc, and Bcc headers.
 pub fn message_all_addresses(msg : Message) -> Array[Mailbox] {
   let results : Array[Mailbox] = []
@@ -284,6 +307,7 @@ pub fn message_all_addresses(msg : Message) -> Array[Mailbox] {
   results
 }
 
+///|
 /// Get the sender address (Sender header or From).
 pub fn message_sender(msg : Message) -> Array[Mailbox] {
   let value = get_header(msg, "Sender")
@@ -293,22 +317,25 @@ pub fn message_sender(msg : Message) -> Array[Mailbox] {
   }
 }
 
+///|
 /// Generate a unique Message-ID for a new message.
 /// Format: <prefix.timestamp@domain>
 /// The timestamp is derived from a caller-provided value so the function
 /// stays pure and deterministic for testing.
-pub fn generate_message_id(domain : String, timestamp~ : Int = 0) -> MessageId {
+pub fn generate_message_id(domain : String, timestamp? : Int = 0) -> MessageId {
   let ts = timestamp
   let rand = ts * 7919 + 104729
   let id = "mbt." + ts.to_string() + "." + rand.to_string()
-  message_id(id=id, domain=domain)
+  message_id(id~, domain~)
 }
 
+///|
 /// Get the List-Unsubscribe header, if present.
 pub fn message_list_unsubscribe(msg : Message) -> String? {
   get_header(msg, "List-Unsubscribe")
 }
 
+///|
 /// Check whether a message has a priority header.
 pub fn message_priority(msg : Message) -> String? {
   let pri = get_header(msg, "X-Priority")
@@ -318,11 +345,13 @@ pub fn message_priority(msg : Message) -> String? {
   }
 }
 
+///|
 /// Get the number of headers in a message.
 pub fn message_header_count(msg : Message) -> Int {
   msg.headers.length()
 }
 
+///|
 /// Summarize a message: Subject, From, and Date in one string.
 pub fn summarize_message(msg : Message) -> String {
   let subject = message_subject(msg)

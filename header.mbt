@@ -14,6 +14,7 @@
 ///
 /// This module provides full decoding for both mechanisms.
 
+///|
 /// Decode all RFC 2047 encoded-words in a header value.
 ///
 /// Adjacent encoded-words are concatenated without a separator,
@@ -28,7 +29,9 @@ pub fn decode_header_value(input : String) -> String {
 
   while i < len {
     // Check for encoded-word start
-    if i + 2 < len && s.get_char(i).unwrap() == '=' && s.get_char(i + 1).unwrap() == '?' {
+    if i + 2 < len &&
+      s.get_char(i).unwrap() == '=' &&
+      s.get_char(i + 1).unwrap() == '?' {
       // Find the closing ?=
       let end = find_encoded_end(s, i + 2)
       match end {
@@ -59,7 +62,9 @@ pub fn decode_header_value(input : String) -> String {
           // Skip a single space between two encoded-words
           if i < len && s.get_char(i).unwrap() == ' ' {
             // Peek: if next is another encoded-word, skip the space
-            if i + 1 < len && s.get_char(i + 1).unwrap() == '=' && s.get_char(i + 2).unwrap() == '?' {
+            if i + 1 < len &&
+              s.get_char(i + 1).unwrap() == '=' &&
+              s.get_char(i + 2).unwrap() == '?' {
               i = i + 1
             } else {
               sb.write_char(' ')
@@ -78,6 +83,7 @@ pub fn decode_header_value(input : String) -> String {
   sb.to_string()
 }
 
+///|
 /// Find the position of the closing "?=" of an encoded-word starting at
 /// the "?..." part. Returns the index of the last '='.
 fn find_encoded_end(s : String, start : Int) -> Int? {
@@ -92,6 +98,7 @@ fn find_encoded_end(s : String, start : Int) -> Int? {
   None
 }
 
+///|
 /// Decode a single RFC 2231 extended parameter value.
 ///
 /// Handles the charset and language prefix: "UTF-8''..." where the
@@ -101,10 +108,9 @@ pub fn decode_rfc2231_value(input : String) -> String? {
   // Look for the charset'language' prefix
   let q1 = s.find("'")
   match q1 {
-    None => {
+    None =>
       // No charset prefix: percent-decode the whole value
       percent_decode(s)
-    }
     Some(p1) => {
       // charset before p1
       let charset = s.unsafe_substring(start=0, end=p1).to_upper()
@@ -119,10 +125,13 @@ pub fn decode_rfc2231_value(input : String) -> String? {
           let decoded = percent_decode(encoded)
           match decoded {
             Some(text) => Some(text)
-            None => {
+            None =>
               // Fall back to raw if charset is not UTF-8
-              if charset == "UTF-8" { None } else { Some(encoded) }
-            }
+              if charset == "UTF-8" {
+                None
+              } else {
+                Some(encoded)
+              }
           }
         }
       }
@@ -130,9 +139,11 @@ pub fn decode_rfc2231_value(input : String) -> String? {
   }
 }
 
+///|
 /// Percent-decode a string: %XX sequences become their byte values.
+/// Multi-byte UTF-8 sequences are decoded into Unicode characters.
 pub fn percent_decode(input : String) -> String? {
-  let sb = StringBuilder::new()
+  let bytes : Array[Int] = []
   let len = input.length()
   let mut i = 0
   while i < len {
@@ -144,23 +155,24 @@ pub fn percent_decode(input : String) -> String? {
         let byte = hex_pair(h1, h2)
         match byte {
           Some(b) => {
-            sb.write_char(Int::unsafe_to_char(b))
+            bytes.push(b)
             i = i + 3
             continue
           }
           None => ()
         }
       }
-      sb.write_char(c)
+      bytes.push(c.to_int())
       i = i + 1
     } else {
-      sb.write_char(c)
+      bytes.push(c.to_int())
       i = i + 1
     }
   }
-  Some(sb.to_string())
+  Some(utf8_decode(bytes))
 }
 
+///|
 /// Convert two hex characters to a byte value.
 fn hex_pair(h1 : Char, h2 : Char) -> Int? {
   let hi = hex_char_to_int(h1)
@@ -171,12 +183,15 @@ fn hex_pair(h1 : Char, h2 : Char) -> Int? {
   }
 }
 
+///|
 /// Merge RFC 2231 parameter continuations into complete parameter values.
 ///
 /// Handles both:
 ///   - Single-part extended values: name*=charset'lang'value
 ///   - Continued values: name*0*=..., name*1*=..., name*2=...
-pub fn merge_extended_params(params : Array[(String, String)]) -> Array[(String, String)] {
+pub fn merge_extended_params(
+  params : Array[(String, String)],
+) -> Array[(String, String)] {
   let results : Array[(String, String)] = []
 
   // First pass: collect regular (non-extended) parameters
@@ -212,6 +227,7 @@ pub fn merge_extended_params(params : Array[(String, String)]) -> Array[(String,
   results
 }
 
+///|
 /// Extract the base parameter name from an extended name.
 /// "filename*0*" -> "filename", "name*" -> "name"
 fn base_param_name(key : String) -> String {
@@ -222,8 +238,12 @@ fn base_param_name(key : String) -> String {
   }
 }
 
+///|
 /// Join all continuation segments of an extended parameter and decode.
-fn join_continuations(params : Array[(String, String)], base : String) -> String? {
+fn join_continuations(
+  params : Array[(String, String)],
+  base : String,
+) -> String? {
   // Collect segments with their sequence numbers
   let segments : Array[(Int, String)] = []
 
@@ -273,6 +293,7 @@ fn join_continuations(params : Array[(String, String)], base : String) -> String
   }
 }
 
+///|
 /// Parse a small integer from a string.
 fn parse_num(s : String) -> Int? {
   if s.length() == 0 {
@@ -289,6 +310,7 @@ fn parse_num(s : String) -> Int? {
   Some(result)
 }
 
+///|
 /// Sort (Int, String) pairs by the integer in ascending order (insertion sort).
 fn sort_segments(segments : Array[(Int, String)]) -> Unit {
   let mut i = 1
@@ -304,6 +326,7 @@ fn sort_segments(segments : Array[(Int, String)]) -> Unit {
   }
 }
 
+///|
 /// Decode a Content-Type header with RFC 2231 extended parameters.
 pub fn decode_content_type(value : String) -> ContentType? {
   let ct = parse_content_type(value)
@@ -320,6 +343,7 @@ pub fn decode_content_type(value : String) -> ContentType? {
   }
 }
 
+///|
 /// Decode a Content-Disposition header with RFC 2231 extended parameters.
 pub fn decode_content_disposition(value : String) -> ContentDisposition? {
   let cd = parse_content_disposition(value)
@@ -327,14 +351,12 @@ pub fn decode_content_disposition(value : String) -> ContentDisposition? {
     None => None
     Some(d) => {
       let merged = merge_extended_params(d.params)
-      Some(ContentDisposition::{
-        disposition: d.disposition,
-        params: merged,
-      })
+      Some(ContentDisposition::{ disposition: d.disposition, params: merged })
     }
   }
 }
 
+///|
 /// Get a decoded filename from a Content-Disposition, handling RFC 2231.
 pub fn decoded_filename(cd : ContentDisposition) -> String? {
   // Prefer the extended filename parameter
@@ -348,18 +370,21 @@ pub fn decoded_filename(cd : ContentDisposition) -> String? {
   found
 }
 
+///|
 /// Check whether a header value contains any RFC 2047 encoded-word.
 pub fn has_encoded_words(input : String) -> Bool {
   input.contains("=?") && input.contains("?=")
 }
 
+///|
 /// Count the number of encoded-words in a header value.
 pub fn count_encoded_words(input : String) -> Int {
   let mut count = 0
   let len = input.length()
   let mut i = 0
   while i + 1 < len {
-    if input.get_char(i).unwrap() == '=' && input.get_char(i + 1).unwrap() == '?' {
+    if input.get_char(i).unwrap() == '=' &&
+      input.get_char(i + 1).unwrap() == '?' {
       // Skip past the encoded-word
       let end = find_encoded_end(input, i + 2)
       match end {
@@ -376,6 +401,7 @@ pub fn count_encoded_words(input : String) -> Int {
   count
 }
 
+///|
 /// Strip comments (parenthesized text) from a header value.
 pub fn strip_comments(input : String) -> String {
   let sb = StringBuilder::new()
@@ -395,5 +421,5 @@ pub fn strip_comments(input : String) -> String {
       sb.write_char(c)
     }
   }
-  sb.to_string().trim(chars=" \t").to_owned()
+  collapse_ws(sb.to_string())
 }

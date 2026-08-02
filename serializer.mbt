@@ -1,5 +1,6 @@
 /// Email/MIME serializer: converts Message AST back to RFC 5322 text.
 
+///|
 /// Serialize a Message to RFC 5322 format text.
 pub fn message_to_string(msg : Message) -> String {
   let sb = StringBuilder::new()
@@ -17,10 +18,8 @@ pub fn message_to_string(msg : Message) -> String {
 
   // Write body or MIME part
   match msg.mime_part {
-    Some(part) => {
-      serialize_mime_part(part, sb)
-    }
-    None => {
+    Some(part) => serialize_mime_part(part, sb)
+    None =>
       match msg.body {
         Some(b) => {
           sb.write_string(b)
@@ -31,12 +30,12 @@ pub fn message_to_string(msg : Message) -> String {
         }
         None => ()
       }
-    }
   }
 
   sb.to_string()
 }
 
+///|
 /// Serialize a MIME part to text.
 fn serialize_mime_part(part : MimePart, sb : StringBuilder) -> Unit {
   match part.body {
@@ -102,6 +101,7 @@ fn serialize_mime_part(part : MimePart, sb : StringBuilder) -> Unit {
   }
 }
 
+///|
 /// Find the boundary parameter from MIME headers.
 fn find_boundary(headers : Array[Header]) -> String? {
   for h in headers {
@@ -124,6 +124,7 @@ fn find_boundary(headers : Array[Header]) -> String? {
   None
 }
 
+///|
 /// Simple base64 encoder for Bytes.
 fn base64_encode(data : Bytes) -> String {
   let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -142,24 +143,44 @@ fn base64_encode(data : Bytes) -> String {
 
     result.write_char(table.get_char(c1).unwrap())
     result.write_char(table.get_char(c2).unwrap())
-    result.write_char(if i + 1 < len { table.get_char(c3).unwrap() } else { '=' })
-    result.write_char(if i + 2 < len { table.get_char(c4).unwrap() } else { '=' })
+    result.write_char(
+      if i + 1 < len {
+        table.get_char(c3).unwrap()
+      } else {
+        '='
+      },
+    )
+    result.write_char(
+      if i + 2 < len {
+        table.get_char(c4).unwrap()
+      } else {
+        '='
+      },
+    )
 
     i = i + 3
   }
   result.to_string()
 }
 
-
+///|
 /// Serialize an EmailAddress to string.
 pub fn address_to_string(addr : EmailAddress) -> String {
   let local_part = addr.local_part
   // Check if local part needs quoting
-  let needs_quote = local_part.contains("@") || local_part.contains(" ") || local_part.contains("<") ||
-                    local_part.contains(">") || local_part.contains(",") || local_part.contains(";") ||
-                    local_part.contains(":") || local_part.contains("\\") || local_part.contains("\"") ||
-                    local_part.contains("(") || local_part.contains(")") || local_part.contains("[") ||
-                    local_part.contains("]")
+  let needs_quote = local_part.contains("@") ||
+    local_part.contains(" ") ||
+    local_part.contains("<") ||
+    local_part.contains(">") ||
+    local_part.contains(",") ||
+    local_part.contains(";") ||
+    local_part.contains(":") ||
+    local_part.contains("\\") ||
+    local_part.contains("\"") ||
+    local_part.contains("(") ||
+    local_part.contains(")") ||
+    local_part.contains("[") ||
+    local_part.contains("]")
 
   let local_str = if needs_quote {
     "\"" + local_part + "\""

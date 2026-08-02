@@ -8,6 +8,7 @@
 /// All public functions use the b64_ / qp_ prefixes to avoid name
 /// collisions with internal helpers in other modules.
 
+///|
 /// Encode a byte sequence as Base64, with 76-character line wrapping.
 pub fn b64_encode_bytes(data : Array[Int]) -> String {
   let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -40,6 +41,7 @@ pub fn b64_encode_bytes(data : Array[Int]) -> String {
   sb.to_string()
 }
 
+///|
 /// Decode a Base64 string into a byte sequence.
 /// Returns None if the input is not valid Base64.
 pub fn b64_decode_bytes(input : String) -> Array[Int]? {
@@ -82,6 +84,7 @@ pub fn b64_decode_bytes(input : String) -> Array[Int]? {
   Some(result)
 }
 
+///|
 /// Decode a Base64 string into a text string (Latin-1 mapping).
 pub fn b64_decode_text(input : String) -> String? {
   let bytes = b64_decode_bytes(input)
@@ -97,6 +100,7 @@ pub fn b64_decode_text(input : String) -> String? {
   }
 }
 
+///|
 /// Encode a text string as Base64 using Latin-1 mapping.
 pub fn b64_encode_text(s : String) -> String {
   let bytes : Array[Int] = []
@@ -106,6 +110,7 @@ pub fn b64_encode_text(s : String) -> String {
   b64_encode_bytes(bytes)
 }
 
+///|
 /// Encode a byte sequence as Quoted-Printable (RFC 2045 6.7).
 /// Non-printable bytes and '=' are escaped as =XX. Soft line breaks
 /// are inserted at 75 columns.
@@ -148,6 +153,7 @@ pub fn qp_encode_bytes(data : Array[Int]) -> String {
   sb.to_string()
 }
 
+///|
 /// Encode a text string as Quoted-Printable.
 pub fn qp_encode_text(s : String) -> String {
   let bytes : Array[Int] = []
@@ -157,6 +163,7 @@ pub fn qp_encode_text(s : String) -> String {
   qp_encode_bytes(bytes)
 }
 
+///|
 /// Decode a Quoted-Printable encoded string (RFC 2045 6.7).
 /// Handles soft line breaks (=CRLF, =LF) and hex escapes (=XX).
 pub fn qp_decode(input : String) -> String? {
@@ -170,8 +177,9 @@ pub fn qp_decode(input : String) -> String? {
       if i + 1 < len && input.get_char(i + 1).unwrap() == '\n' {
         i = i + 2
         continue
-      } else if i + 2 < len && input.get_char(i + 1).unwrap() == '\r' &&
-                input.get_char(i + 2).unwrap() == '\n' {
+      } else if i + 2 < len &&
+        input.get_char(i + 1).unwrap() == '\r' &&
+        input.get_char(i + 2).unwrap() == '\n' {
         i = i + 3
         continue
       } else if i + 2 < len {
@@ -206,6 +214,7 @@ pub fn qp_decode(input : String) -> String? {
   Some(sb.to_string())
 }
 
+///|
 /// Convert a hex character to its integer value (0-15).
 pub fn hex_char_to_int(c : Char) -> Int? {
   if c >= '0' && c <= '9' {
@@ -219,6 +228,7 @@ pub fn hex_char_to_int(c : Char) -> Int? {
   }
 }
 
+///|
 /// Format a byte as two uppercase hex digits.
 fn hex_byte_upper(b : Int) -> String {
   let digits = "0123456789ABCDEF"
@@ -230,6 +240,7 @@ fn hex_byte_upper(b : Int) -> String {
   sb.to_string()
 }
 
+///|
 /// Strip whitespace and '=' padding artifacts from a Base64 string.
 fn strip_b64_ws(input : String) -> String {
   let sb = StringBuilder::new()
@@ -241,6 +252,7 @@ fn strip_b64_ws(input : String) -> String {
   sb.to_string()
 }
 
+///|
 /// Find the index of a Base64 character in the standard alphabet.
 fn b64_index_of(table : String, c : Char) -> Int? {
   let mut i = 0
@@ -256,6 +268,7 @@ fn b64_index_of(table : String, c : Char) -> Int? {
   None
 }
 
+///|
 /// Check whether a string contains only ASCII characters (0-127).
 pub fn is_ascii_only(s : String) -> Bool {
   for c in s {
@@ -266,6 +279,7 @@ pub fn is_ascii_only(s : String) -> Bool {
   true
 }
 
+///|
 /// Check whether a string is valid printable ASCII text.
 pub fn is_printable_ascii(s : String) -> Bool {
   for c in s {
@@ -280,6 +294,7 @@ pub fn is_printable_ascii(s : String) -> Bool {
   true
 }
 
+///|
 /// Encode a non-ASCII string using RFC 2047 encoded-word Base64 form.
 /// Only encodes if the input contains non-ASCII characters.
 pub fn encode_encoded_word_b(s : String) -> String {
@@ -290,6 +305,7 @@ pub fn encode_encoded_word_b(s : String) -> String {
   "=?UTF-8?B?" + encoded + "?="
 }
 
+///|
 /// Encode a non-ASCII string using RFC 2047 encoded-word Q form.
 /// Spaces become '_' in the encoded form.
 pub fn encode_encoded_word_q(s : String) -> String {

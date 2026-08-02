@@ -9,17 +9,23 @@
 /// The parsed structures reuse the core AST types and add the
 /// Mailbox type for display-name aware addresses.
 
+///|
 /// A mailbox: optional display name plus the addr-spec.
 pub struct Mailbox {
   display_name : String
   address : EmailAddress?
 }
 
+///|
 /// Create a Mailbox value.
-pub fn mailbox(display_name~ : String = "", address~ : EmailAddress?) -> Mailbox {
+pub fn mailbox(
+  display_name? : String = "",
+  address~ : EmailAddress?,
+) -> Mailbox {
   Mailbox::{ display_name, address }
 }
 
+///|
 /// Parse a full mailbox into a Mailbox value.
 ///
 /// Handles formats:
@@ -40,15 +46,15 @@ pub fn parse_mailbox(input : String) -> Mailbox? {
 
   if langle is Some(lp) && rangle is Some(rp) && rp > lp {
     // Extract the display name (text before <)
-    let name_raw = s.unsafe_substring(start=0, end=lp).trim(chars=" \t\r\n").to_owned()
+    let name_raw = s
+      .unsafe_substring(start=0, end=lp)
+      .trim(chars=" \t\r\n")
+      .to_owned()
     let addr_str = s.unsafe_substring(start=lp + 1, end=rp)
     let addr = parse_address(addr_str)
     let display = clean_display_name(name_raw)
     let display_decoded = decode_header_value(display)
-    Some(Mailbox::{
-      display_name: display_decoded,
-      address: addr,
-    })
+    Some(Mailbox::{ display_name: display_decoded, address: addr })
   } else {
     // No angle brackets: the whole thing is an addr-spec,
     // possibly with a leading phrase and comments.
@@ -56,15 +62,15 @@ pub fn parse_mailbox(input : String) -> Mailbox? {
     let addr = parse_address(stripped)
     match addr {
       Some(a) => Some(Mailbox::{ display_name: "", address: Some(a) })
-      None => {
+      None =>
         // Maybe "Display Name user@example.com" without brackets:
         // take the last token as the address
         parse_addr_from_phrase(stripped)
-      }
     }
   }
 }
 
+///|
 /// Try to parse a phrase-form address without angle brackets.
 /// Splits on the last '@' to find a plausible addr-spec tail.
 fn parse_addr_from_phrase(s : String) -> Mailbox? {
@@ -84,16 +90,18 @@ fn parse_addr_from_phrase(s : String) -> Mailbox? {
         i = i + 1
       }
       if last_space >= 0 {
-        let name = s.unsafe_substring(start=0, end=last_space).trim(chars=" \t").to_owned()
+        let name = s
+          .unsafe_substring(start=0, end=last_space)
+          .trim(chars=" \t")
+          .to_owned()
         let addr_str = s.unsafe_substring(start=last_space + 1, end=s.length())
         let addr = parse_address(addr_str)
         match addr {
-          Some(a) => {
+          Some(a) =>
             Some(Mailbox::{
               display_name: decode_header_value(clean_display_name(name)),
               address: Some(a),
             })
-          }
           None => None
         }
       } else {
@@ -107,10 +115,13 @@ fn parse_addr_from_phrase(s : String) -> Mailbox? {
   }
 }
 
+///|
 /// Clean a display name: strip quotes, unescape, and trim.
 fn clean_display_name(s : String) -> String {
   let trimmed = s.trim(chars=" \t").to_owned()
-  if trimmed.has_prefix("\"") && trimmed.has_suffix("\"") && trimmed.length() >= 2 {
+  if trimmed.has_prefix("\"") &&
+    trimmed.has_suffix("\"") &&
+    trimmed.length() >= 2 {
     let inner = trimmed.unsafe_substring(start=1, end=trimmed.length() - 1)
     unescape_quoted(inner)
   } else {
@@ -118,6 +129,7 @@ fn clean_display_name(s : String) -> String {
   }
 }
 
+///|
 /// Remove backslash escapes from a quoted string.
 fn unescape_quoted(s : String) -> String {
   let sb = StringBuilder::new()
@@ -136,6 +148,7 @@ fn unescape_quoted(s : String) -> String {
   sb.to_string()
 }
 
+///|
 /// Parse an address list that may contain groups.
 ///
 /// Returns all mailbox addresses found. Group members are flattened
@@ -172,6 +185,7 @@ pub fn parse_mailbox_list(input : String) -> Array[Mailbox] {
   results
 }
 
+///|
 /// Split an address list into group segments.
 fn split_groups(input : String) -> Array[String] {
   let results : Array[String] = []
@@ -184,18 +198,19 @@ fn split_groups(input : String) -> Array[String] {
     if c == '"' {
       in_quote = !in_quote
     } else if c == ';' && !in_quote {
-      let segment = input.unsafe_substring(start=start, end=i + 1)
+      let segment = input.unsafe_substring(start~, end=i + 1)
       results.push(segment)
       start = i + 1
     }
     i = i + 1
   }
   if start < len {
-    results.push(input.unsafe_substring(start=start, end=len))
+    results.push(input.unsafe_substring(start~, end=len))
   }
   results
 }
 
+///|
 /// Parse the members of a single group: "Name: a@b, c@d;"
 fn parse_group_members(group : String) -> Array[Mailbox] {
   let results : Array[Mailbox] = []
@@ -210,7 +225,10 @@ fn parse_group_members(group : String) -> Array[Mailbox] {
       }
     }
     Some(cp) => {
-      let member_part = group.unsafe_substring(start=cp + 1, end=group.length()).trim(chars=" \t;").to_owned()
+      let member_part = group
+        .unsafe_substring(start=cp + 1, end=group.length())
+        .trim(chars=" \t;")
+        .to_owned()
       let parts = split_addr_list(member_part)
       for part in parts {
         let mb = parse_mailbox(part)
@@ -224,6 +242,7 @@ fn parse_group_members(group : String) -> Array[Mailbox] {
   results
 }
 
+///|
 /// Validate a domain per RFC 5322: letters, digits, hyphen, and dots.
 pub fn validate_domain(domain : String) -> Bool {
   if domain.length() == 0 {
@@ -248,12 +267,16 @@ pub fn validate_domain(domain : String) -> Bool {
   !last_was_dot
 }
 
+///|
 /// Check whether a character is valid in a domain label.
 fn is_domain_char(c : Char) -> Bool {
-  (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-  (c >= '0' && c <= '9') || c == '-'
+  (c >= 'a' && c <= 'z') ||
+  (c >= 'A' && c <= 'Z') ||
+  (c >= '0' && c <= '9') ||
+  c == '-'
 }
 
+///|
 /// Validate a local part per RFC 5322.
 /// Accepts dot-atom and quoted-string forms.
 pub fn validate_local_part(local_part : String) -> Bool {
@@ -285,21 +308,40 @@ pub fn validate_local_part(local_part : String) -> Bool {
   }
 }
 
+///|
 /// Check whether a character is valid in an atom (RFC 5322 atext).
 fn is_atext_char(c : Char) -> Bool {
-  (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+  (c >= 'a' && c <= 'z') ||
+  (c >= 'A' && c <= 'Z') ||
   (c >= '0' && c <= '9') ||
-  c == '!' || c == '#' || c == '$' || c == '%' || c == '&' ||
-  c == '\'' || c == '*' || c == '+' || c == '-' || c == '/' ||
-  c == '=' || c == '?' || c == '^' || c == '_' || c == '`' ||
-  c == '{' || c == '|' || c == '}' || c == '~'
+  c == '!' ||
+  c == '#' ||
+  c == '$' ||
+  c == '%' ||
+  c == '&' ||
+  c == '\'' ||
+  c == '*' ||
+  c == '+' ||
+  c == '-' ||
+  c == '/' ||
+  c == '=' ||
+  c == '?' ||
+  c == '^' ||
+  c == '_' ||
+  c == '`' ||
+  c == '{' ||
+  c == '|' ||
+  c == '}' ||
+  c == '~'
 }
 
+///|
 /// Validate a full email address (local part and domain).
 pub fn validate_email_address(addr : EmailAddress) -> Bool {
   validate_local_part(addr.local_part) && validate_domain(addr.domain)
 }
 
+///|
 /// Get the display name from a Mailbox, or the local part if empty.
 pub fn mailbox_display_name(mb : Mailbox) -> String {
   if mb.display_name.length() > 0 {
@@ -312,6 +354,7 @@ pub fn mailbox_display_name(mb : Mailbox) -> String {
   }
 }
 
+///|
 /// Format a Mailbox back to a string.
 pub fn mailbox_to_string(mb : Mailbox) -> String {
   let addr_str = match mb.address {
@@ -320,9 +363,12 @@ pub fn mailbox_to_string(mb : Mailbox) -> String {
   }
   if mb.display_name.length() > 0 {
     // Quote the display name if it contains special characters
-    let name = if mb.display_name.contains(",") || mb.display_name.contains(";") ||
-                 mb.display_name.contains(":") || mb.display_name.contains("<") ||
-                 mb.display_name.contains(">") || mb.display_name.contains("@") {
+    let name = if mb.display_name.contains(",") ||
+      mb.display_name.contains(";") ||
+      mb.display_name.contains(":") ||
+      mb.display_name.contains("<") ||
+      mb.display_name.contains(">") ||
+      mb.display_name.contains("@") {
       "\"" + mb.display_name + "\""
     } else {
       mb.display_name
@@ -337,6 +383,7 @@ pub fn mailbox_to_string(mb : Mailbox) -> String {
   }
 }
 
+///|
 /// Convert a list of Mailboxes to a comma-separated string.
 pub fn mailbox_list_to_string(mbs : Array[Mailbox]) -> String {
   let sb = StringBuilder::new()
@@ -349,6 +396,7 @@ pub fn mailbox_list_to_string(mbs : Array[Mailbox]) -> String {
   sb.to_string()
 }
 
+///|
 /// Get all EmailAddress values from an array of Mailboxes.
 pub fn mailbox_addresses(mbs : Array[Mailbox]) -> Array[EmailAddress] {
   let results : Array[EmailAddress] = []
