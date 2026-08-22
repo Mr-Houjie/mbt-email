@@ -1,4 +1,4 @@
-name = "houjie/mbt-email"
+name = "Mr-Houjie/mbt-email"
 
 version = "0.1.0"
 

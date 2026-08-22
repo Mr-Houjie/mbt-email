@@ -26,8 +26,6 @@ pub enum Token {
   LAngle
   /// > (right angle bracket)
   RAngle
-  /// [ (left bracket)
-  LBracket
   /// ] (right bracket)
   RBracket
   /// ( (left paren)
@@ -52,7 +50,7 @@ pub enum Token {
 
 ///|
 /// The lexer state.
-struct Lexer {
+priv struct Lexer {
   input : String
   pos : Int
   len : Int
@@ -147,24 +145,6 @@ fn is_header_name_char(c : Char) -> Bool {
 }
 
 ///|
-/// Check for CR (carriage return).
-fn is_cr(l : Lexer) -> Bool {
-  match peek(l) {
-    Some('\r') => true
-    _ => false
-  }
-}
-
-///|
-/// Check for LF (line feed).
-fn is_lf(l : Lexer) -> Bool {
-  match peek(l) {
-    Some('\n') => true
-    _ => false
-  }
-}
-
-///|
 /// Skip a CRLF or LF newline sequence. Returns new lexer position.
 fn skip_newline(l : Lexer) -> Lexer {
   let mut cur = l
@@ -228,7 +208,6 @@ fn read_header_name(l : Lexer) -> (String, Lexer) {
 /// Returns the full string including quotes.
 fn read_quoted_string(l : Lexer) -> (String, Lexer) {
   let mut cur = advance(l) // skip opening quote
-  let start = l.pos // start after opening quote
   while true {
     match peek(cur) {
       None => break // unterminated, return what we have
@@ -322,7 +301,7 @@ fn read_header_value(l : Lexer) -> (String, Lexer) {
       }
     }
   }
-  (buf.to_string().trim_end(chars=" \t").to_string(), cur)
+  (buf.to_string().trim_end(chars=" \t").to_owned(), cur)
 }
 
 ///|
@@ -330,7 +309,6 @@ fn read_header_value(l : Lexer) -> (String, Lexer) {
 /// Returns the boundary string and whether it's a closing boundary.
 fn read_boundary(l : Lexer) -> (String, Bool, Lexer) {
   let mut cur = advance_n(l, 2) // skip "--"
-  let start = cur.pos
   // Read until end of line or end of input
   let buf = StringBuilder::new()
   while true {

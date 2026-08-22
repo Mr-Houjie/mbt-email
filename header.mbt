@@ -208,7 +208,7 @@ pub fn merge_extended_params(
   let seen : Array[String] = []
   let mut j = 0
   while j < params.length() {
-    let (k, v) = params[j]
+    let (k, _) = params[j]
     if k.contains("*") {
       // Extract base name: strip *N* or * suffixes
       let base = base_param_name(k)

@@ -1,5 +1,5 @@
 import {
-  "houjie/mbt-email" @lib,
+  "Mr-Houjie/mbt-email" @lib,
 }
 
 options(
